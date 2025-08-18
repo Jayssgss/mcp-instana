@@ -9,9 +9,11 @@ from typing import Any, Dict, List, Optional
 
 # Import the necessary classes from the SDK
 try:
-    from instana_client.api.infrastructure_catalog_api import InfrastructureCatalogApi
-    from instana_client.api_client import ApiClient
-    from instana_client.configuration import Configuration
+    from instana_client.api.infrastructure_catalog_api import (
+        InfrastructureCatalogApi,  
+    )
+    from instana_client.api_client import ApiClient  
+    from instana_client.configuration import Configuration  
 except ImportError as e:
     import logging
     logger = logging.getLogger(__name__)
@@ -31,7 +33,7 @@ class InfrastructureCatalogMCPTools(BaseInstanaClient):
         super().__init__(read_token=read_token, base_url=base_url)
 
     @register_as_tool
-    @with_header_auth(InfrastructureCatalogApi)
+    @with_header_auth(InfrastructureCatalogApi, allow_mock=True)
     async def get_available_payload_keys_by_plugin_id(self,
                                                       plugin_id: str,
                                                       ctx=None, api_client=None) -> Dict[str, Any]:
@@ -122,7 +124,7 @@ class InfrastructureCatalogMCPTools(BaseInstanaClient):
 
 
     @register_as_tool
-    @with_header_auth(InfrastructureCatalogApi)
+    @with_header_auth(InfrastructureCatalogApi, allow_mock=True)
     async def get_infrastructure_catalog_metrics(self,
                                                  plugin: str,
                                                  filter: Optional[str] = None,
@@ -192,7 +194,7 @@ class InfrastructureCatalogMCPTools(BaseInstanaClient):
 
 
     @register_as_tool
-    @with_header_auth(InfrastructureCatalogApi)
+    @with_header_auth(InfrastructureCatalogApi, allow_mock=True)
     async def get_infrastructure_catalog_plugins(self, ctx=None, api_client=None) -> Dict[str, Any]:
         """
         Get plugin catalog from Instana. This tool retrieves all available plugin IDs for your monitored system, showing what types of entities Instana is monitoring in your environment.
@@ -262,7 +264,7 @@ class InfrastructureCatalogMCPTools(BaseInstanaClient):
 
 
     @register_as_tool
-    @with_header_auth(InfrastructureCatalogApi)
+    @with_header_auth(InfrastructureCatalogApi, allow_mock=True)
     async def get_infrastructure_catalog_plugins_with_custom_metrics(self, ctx=None, api_client=None) -> Dict[str, Any] | List[Dict[str, Any]]:
         """
         Get all plugins with custom metrics catalog from Instana. This tool retrieves information about which entity types (plugins) in your environment have custom metrics configured.
@@ -302,7 +304,7 @@ class InfrastructureCatalogMCPTools(BaseInstanaClient):
 
 
     @register_as_tool
-    @with_header_auth(InfrastructureCatalogApi)
+    @with_header_auth(InfrastructureCatalogApi, allow_mock=True)
     async def get_tag_catalog(self, plugin: str, ctx=None, api_client=None) -> Dict[str, Any]:
         """
         Get available tags for a particular plugin. This tool retrieves the tag catalog filtered by plugin.
@@ -387,7 +389,7 @@ class InfrastructureCatalogMCPTools(BaseInstanaClient):
 
 
     @register_as_tool
-    @with_header_auth(InfrastructureCatalogApi)
+    @with_header_auth(InfrastructureCatalogApi, allow_mock=True)
     async def get_tag_catalog_all(self, ctx=None, api_client=None) -> Dict[str, Any]:
         """
         Get all available tags. This tool retrieves the complete list of all tags available in your Instana-monitored environment. It returns every tag across all plugins, services, and technologies, allowing users to explore the full tagging taxonomy.
@@ -506,7 +508,7 @@ class InfrastructureCatalogMCPTools(BaseInstanaClient):
 
 
     @register_as_tool
-    @with_header_auth(InfrastructureCatalogApi)
+    @with_header_auth(InfrastructureCatalogApi, allow_mock=True)
     async def get_infrastructure_catalog_search_fields(self, ctx=None, api_client=None) -> List[str] | Dict[str, Any]:
         """
         Get search field catalog from Instana. This tool retrieves all available search keywords and fields that can be used in dynamic focus queries for infrastructure monitoring.

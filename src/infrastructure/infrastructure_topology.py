@@ -10,9 +10,11 @@ from typing import Any, Dict, Optional
 
 # Import the necessary classes from the SDK
 try:
-    from instana_client.api.infrastructure_topology_api import InfrastructureTopologyApi
-    from instana_client.api_client import ApiClient
-    from instana_client.configuration import Configuration
+    from instana_client.api.infrastructure_topology_api import (
+        InfrastructureTopologyApi,  #type: ignore
+    )
+    from instana_client.api_client import ApiClient  #type: ignore
+    from instana_client.configuration import Configuration  #type: ignore
 
 except ImportError:
     import logging
@@ -48,7 +50,7 @@ class InfrastructureTopologyMCPTools(BaseInstanaClient):
         super().__init__(read_token=read_token, base_url=base_url)
 
     @register_as_tool
-    @with_header_auth(InfrastructureTopologyApi)
+    @with_header_auth(InfrastructureTopologyApi, allow_mock=True)
     async def get_related_hosts(self,
                                 snapshot_id: str,
                                 to_time: Optional[int] = None,
@@ -109,7 +111,7 @@ class InfrastructureTopologyMCPTools(BaseInstanaClient):
             return {"error": f"Failed to get related hosts: {e!s}"}
 
     @register_as_tool
-    @with_header_auth(InfrastructureTopologyApi)
+    @with_header_auth(InfrastructureTopologyApi, allow_mock=True)
     async def get_topology(self,
                            include_data: Optional[bool] = False,
                            ctx=None,

@@ -11,7 +11,7 @@ from typing import Any, Dict, List, Optional, Union
 
 # Import the necessary classes from the SDK
 try:
-    from instana_client.api.infrastructure_resources_api import (
+    from instana_client.api.infrastructure_resources_api import (  #type: ignore
         InfrastructureResourcesApi,
     )
     # Check if GetSnapshotsQuery exists, otherwise we'll handle it differently
@@ -38,7 +38,7 @@ class InfrastructureResourcesMCPTools(BaseInstanaClient):
         super().__init__(read_token=read_token, base_url=base_url)
 
     @register_as_tool
-    @with_header_auth(InfrastructureResourcesApi)
+    @with_header_auth(InfrastructureResourcesApi, allow_mock=True)
     async def get_monitoring_state(self, ctx=None, api_client=None) -> Dict[str, Any]:
         """
         Get the current monitoring state of the Instana system. This tool retrieves details about the number of monitored hosts and serverless entities in your environment.
@@ -64,7 +64,7 @@ class InfrastructureResourcesMCPTools(BaseInstanaClient):
             return {"error": f"Failed to get monitoring state: {e!s}"}
 
     @register_as_tool
-    @with_header_auth(InfrastructureResourcesApi)
+    @with_header_auth(InfrastructureResourcesApi, allow_mock=True)
     async def get_plugin_payload(self,
                                  snapshot_id: str,
                                  payload_key: str,
@@ -105,7 +105,7 @@ class InfrastructureResourcesMCPTools(BaseInstanaClient):
             return {"error": f"Failed to get plugin payload: {e!s}"}
 
     @register_as_tool
-    @with_header_auth(InfrastructureResourcesApi)
+    @with_header_auth(InfrastructureResourcesApi, allow_mock=True)
     async def get_snapshot(self,
                            snapshot_id: str,
                            to_time: Optional[int] = None,
@@ -213,7 +213,7 @@ class InfrastructureResourcesMCPTools(BaseInstanaClient):
             return {"error": f"Failed to get snapshot: {e!s}"}
 
     @register_as_tool
-    @with_header_auth(InfrastructureResourcesApi)
+    @with_header_auth(InfrastructureResourcesApi, allow_mock=True)
     async def get_snapshots(self,
                             query: Optional[str] = None,
                             from_time: Optional[int] = None,
@@ -368,7 +368,7 @@ class InfrastructureResourcesMCPTools(BaseInstanaClient):
 
 
     @register_as_tool
-    @with_header_auth(InfrastructureResourcesApi)
+    @with_header_auth(InfrastructureResourcesApi, allow_mock=True)
     async def post_snapshots(self,
                              snapshot_ids: Union[List[str], str],
                              to_time: Optional[int] = None,
@@ -411,7 +411,9 @@ class InfrastructureResourcesMCPTools(BaseInstanaClient):
             logger.debug(f"Using to_time={to_time}, window_size={window_size}")
 
             if has_get_snapshots_query:
-                from instana_client.models.get_snapshots_query import GetSnapshotsQuery
+                from instana_client.models.get_snapshots_query import (
+                    GetSnapshotsQuery,  #type: ignore
+                )
 
                 query_obj = GetSnapshotsQuery(
                     snapshot_ids=snapshot_ids,
@@ -545,7 +547,7 @@ class InfrastructureResourcesMCPTools(BaseInstanaClient):
 
 
     @register_as_tool
-    @with_header_auth(InfrastructureResourcesApi)
+    @with_header_auth(InfrastructureResourcesApi, allow_mock=True)
     async def software_versions(self, ctx=None, api_client=None) -> Dict[str, Any]:
         """
         Get information about installed software versions across the monitored infrastructure.
@@ -594,8 +596,8 @@ class InfrastructureResourcesMCPTools(BaseInstanaClient):
 
                     # Limit the number of items to return
                     if items_count > 10:
-                        result_dict['summary'] = f"Showing 10 of {items_count} items"
-                        result_dict['items'] = result_dict['items'][:10]
+                        result_dict['summary'] = f"Showing 10 of {items_count} items" #type: ignore
+                        result_dict['items'] = result_dict['items'][:10] #type: ignore
 
                 # If tagTree exists, extract tag names
                 if 'tagTree' in result_dict and isinstance(result_dict['tagTree'], list):
@@ -612,7 +614,7 @@ class InfrastructureResourcesMCPTools(BaseInstanaClient):
                                     })
 
                     # Replace the large tagTree with the extracted tag names
-                    result_dict['tagNames'] = tag_names
+                    result_dict['tagNames'] = tag_names #type: ignore
                     del result_dict['tagTree']
 
             return result_dict

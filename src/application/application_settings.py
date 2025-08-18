@@ -16,15 +16,25 @@ from src.core.utils import BaseInstanaClient, register_as_tool, with_header_auth
 
 # Import the necessary classes from the SDK
 try:
-    from instana_client.api.application_settings_api import ApplicationSettingsApi
-    from instana_client.api_client import ApiClient
-    from instana_client.configuration import Configuration
-    from instana_client.models.application_config import ApplicationConfig
-    from instana_client.models.endpoint_config import EndpointConfig
-    from instana_client.models.manual_service_config import ManualServiceConfig
-    from instana_client.models.new_application_config import NewApplicationConfig
-    from instana_client.models.new_manual_service_config import NewManualServiceConfig
-    from instana_client.models.service_config import ServiceConfig
+    from instana_client.api.application_settings_api import (
+        ApplicationSettingsApi,  #type: ignore
+    )
+    from instana_client.api_client import ApiClient  #type: ignore
+    from instana_client.configuration import Configuration  #type: ignore
+    from instana_client.models.application_config import (
+        ApplicationConfig,  #type: ignore
+    )
+    from instana_client.models.endpoint_config import EndpointConfig  #type: ignore
+    from instana_client.models.manual_service_config import (
+        ManualServiceConfig,  #type: ignore
+    )
+    from instana_client.models.new_application_config import (
+        NewApplicationConfig,  #type: ignore
+    )
+    from instana_client.models.new_manual_service_config import (
+        NewManualServiceConfig,  #type: ignore
+    )
+    from instana_client.models.service_config import ServiceConfig  #type: ignore
 except ImportError as e:
     print(f"Error importing Instana SDK: {e}", file=sys.stderr)
     traceback.print_exc(file=sys.stderr)
@@ -62,7 +72,7 @@ class ApplicationSettingsMCPTools(BaseInstanaClient):
             raise
 
     @register_as_tool
-    @with_header_auth(ApplicationSettingsApi)
+    @with_header_auth(ApplicationSettingsApi, allow_mock=True)
     async def get_all_applications_configs(self,
                              ctx=None,
                              api_client=None) -> List[Dict[str, Any]]:
@@ -96,7 +106,7 @@ class ApplicationSettingsMCPTools(BaseInstanaClient):
             return [{"error": f"Failed to get all applications: {e!s}"}]
 
     @register_as_tool
-    @with_header_auth(ApplicationSettingsApi)
+    @with_header_auth(ApplicationSettingsApi, allow_mock=True)
     async def add_application_config(self,
                                access_rules: List[Dict[str, str]],
                                boundary_scope: str,
@@ -153,7 +163,7 @@ class ApplicationSettingsMCPTools(BaseInstanaClient):
             return {"error": f"Failed to add application configuration: {e!s}"}
 
     @register_as_tool
-    @with_header_auth(ApplicationSettingsApi)
+    @with_header_auth(ApplicationSettingsApi, allow_mock=True)
     async def delete_application_config(self,
                                   id: str,
                                   ctx=None,
@@ -176,7 +186,7 @@ class ApplicationSettingsMCPTools(BaseInstanaClient):
 
             debug_print(f"Deleting application perspective with ID: {id}")
             # Call the delete_application_config method from the SDK
-            self.settings_api.delete_application_config(id=id)
+            api_client.delete_application_config(id=id)
 
             result_dict = {
                 "success": True,
@@ -191,7 +201,7 @@ class ApplicationSettingsMCPTools(BaseInstanaClient):
             return {"error": f"Failed to delete application configuration: {e!s}"}
 
     @register_as_tool
-    @with_header_auth(ApplicationSettingsApi)
+    @with_header_auth(ApplicationSettingsApi, allow_mock=True)
     async def get_application_config(self,
                                   id: str,
                                   ctx=None,
@@ -226,7 +236,7 @@ class ApplicationSettingsMCPTools(BaseInstanaClient):
             return {"error": f"Failed to get application configuration: {e!s}"}
 
     @register_as_tool
-    @with_header_auth(ApplicationSettingsApi)
+    @with_header_auth(ApplicationSettingsApi, allow_mock=True)
     async def update_application_config(
         self,
         id: str,
@@ -293,7 +303,7 @@ class ApplicationSettingsMCPTools(BaseInstanaClient):
             return {"error": f"Failed to update application configuration: {e!s}"}
 
     @register_as_tool
-    @with_header_auth(ApplicationSettingsApi)
+    @with_header_auth(ApplicationSettingsApi, allow_mock=True)
     async def get_all_endpoint_configs(self,
                              ctx=None,
                              api_client=None) -> List[Dict[str, Any]]:
@@ -325,7 +335,7 @@ class ApplicationSettingsMCPTools(BaseInstanaClient):
             return [{"error": f"Failed to get endpoint configs: {e!s}"}]
 
     @register_as_tool
-    @with_header_auth(ApplicationSettingsApi)
+    @with_header_auth(ApplicationSettingsApi, allow_mock=True)
     async def create_endpoint_config(
         self,
         endpoint_case: str,
@@ -384,7 +394,7 @@ class ApplicationSettingsMCPTools(BaseInstanaClient):
             return {"error": f"Failed to get endpoint configs: {e!s}"}
 
     @register_as_tool
-    @with_header_auth(ApplicationSettingsApi)
+    @with_header_auth(ApplicationSettingsApi, allow_mock=True)
     async def delete_endpoint_config(
         self,
         id: str,
@@ -422,7 +432,7 @@ class ApplicationSettingsMCPTools(BaseInstanaClient):
             return {"error": f"Failed to delete endpoint configs: {e!s}"}
 
     @register_as_tool
-    @with_header_auth(ApplicationSettingsApi)
+    @with_header_auth(ApplicationSettingsApi, allow_mock=True)
     async def get_endpoint_config(
         self,
         id: str,
@@ -462,7 +472,7 @@ class ApplicationSettingsMCPTools(BaseInstanaClient):
             return {"error": f"Failed to get endpoint configs: {e!s}"}
 
     @register_as_tool
-    @with_header_auth(ApplicationSettingsApi)
+    @with_header_auth(ApplicationSettingsApi, allow_mock=True)
     async def update_endpoint_config(
         self,
         id: str,
@@ -524,7 +534,7 @@ class ApplicationSettingsMCPTools(BaseInstanaClient):
             return {"error": f"Failed to get endpoint configs: {e!s}"}
 
     @register_as_tool
-    @with_header_auth(ApplicationSettingsApi)
+    @with_header_auth(ApplicationSettingsApi, allow_mock=True)
     async def get_all_manual_service_configs(self,
                              ctx=None,
                              api_client=None) -> List[Dict[str, Any]]:
@@ -556,7 +566,7 @@ class ApplicationSettingsMCPTools(BaseInstanaClient):
             return [{"error": f"Failed to get manual service configs: {e!s}"}]
 
     @register_as_tool
-    @with_header_auth(ApplicationSettingsApi)
+    @with_header_auth(ApplicationSettingsApi, allow_mock=True)
     async def add_manual_service_config(
         self,
         tagFilterExpression: Dict[str, Any],
@@ -627,7 +637,7 @@ class ApplicationSettingsMCPTools(BaseInstanaClient):
             return {"error": f"Failed to create manual service configuration: {e!s}"}
 
     @register_as_tool
-    @with_header_auth(ApplicationSettingsApi)
+    @with_header_auth(ApplicationSettingsApi, allow_mock=True)
     async def delete_manual_service_config(
         self,
         id: str,
@@ -665,7 +675,7 @@ class ApplicationSettingsMCPTools(BaseInstanaClient):
             return {"error": f"Failed to delete manual service configs: {e!s}"}
 
     @register_as_tool
-    @with_header_auth(ApplicationSettingsApi)
+    @with_header_auth(ApplicationSettingsApi, allow_mock=True)
     async def update_manual_service_config(
         self,
         id: str,
@@ -741,7 +751,7 @@ class ApplicationSettingsMCPTools(BaseInstanaClient):
 
 
     @register_as_tool
-    @with_header_auth(ApplicationSettingsApi)
+    @with_header_auth(ApplicationSettingsApi, allow_mock=True)
     async def replace_all_manual_service_config(
         self,
         tagFilterExpression: Dict[str, Any],
@@ -785,13 +795,13 @@ class ApplicationSettingsMCPTools(BaseInstanaClient):
             request_body = {}
 
             if tagFilterExpression:
-                request_body["tagFilterExpression"] = {"tagFilterExpression": tagFilterExpression}
+                request_body["tagFilterExpression"] = tagFilterExpression
             if unmonitoredServiceName:
-                request_body["unmonitoredServiceName"] = {"unmonitoredServiceName": unmonitoredServiceName}
+                request_body["unmonitoredServiceName"] = unmonitoredServiceName
             if existingServiceId:
-                request_body["existingServiceId"] = {"existingServiceId": existingServiceId}
+                request_body["existingServiceId"] = existingServiceId
             if description:
-                request_body["description"] = {"description": description}
+                request_body["description"] = description
 
             new_manual_service_config = NewManualServiceConfig(**request_body)
 
@@ -814,7 +824,7 @@ class ApplicationSettingsMCPTools(BaseInstanaClient):
 
 
     @register_as_tool
-    @with_header_auth(ApplicationSettingsApi)
+    @with_header_auth(ApplicationSettingsApi, allow_mock=True)
     async def get_all_service_configs(self,
                              ctx=None,
                              api_client=None) -> List[Dict[str, Any]]:
@@ -846,7 +856,7 @@ class ApplicationSettingsMCPTools(BaseInstanaClient):
             return [{"error": f"Failed to get application data metrics: {e}"}]
 
     @register_as_tool
-    @with_header_auth(ApplicationSettingsApi)
+    @with_header_auth(ApplicationSettingsApi, allow_mock=True)
     async def add_service_configs(self,
                             enabled: bool,
                             match_specification: List[Dict[str, str]],
@@ -904,7 +914,7 @@ class ApplicationSettingsMCPTools(BaseInstanaClient):
             return [{"error": f"Failed to get application data metrics: {e}"}]
 
     @register_as_tool
-    @with_header_auth(ApplicationSettingsApi)
+    @with_header_auth(ApplicationSettingsApi, allow_mock=True)
     async def replace_all_service_configs(self,
                             enabled: bool,
                             match_specification: List[Dict[str, str]],
@@ -960,7 +970,7 @@ class ApplicationSettingsMCPTools(BaseInstanaClient):
             traceback.print_exc(file=sys.stderr)
             return [{"error": f"Failed to get application data metrics: {e}"}]
     @register_as_tool
-    @with_header_auth(ApplicationSettingsApi)
+    @with_header_auth(ApplicationSettingsApi, allow_mock=True)
     async def order_service_config(self,
                                    request_body: List[str],
                                    ctx=None,
@@ -999,7 +1009,7 @@ class ApplicationSettingsMCPTools(BaseInstanaClient):
             return {"error": f"Failed to order service configs: {e!s}"}
 
     @register_as_tool
-    @with_header_auth(ApplicationSettingsApi)
+    @with_header_auth(ApplicationSettingsApi, allow_mock=True)
     async def delete_service_config(self,
                                 id: str,
                                 ctx=None,
@@ -1037,7 +1047,7 @@ class ApplicationSettingsMCPTools(BaseInstanaClient):
             return {"error": f"Failed to delete service configuration: {e!s}"}
 
     @register_as_tool
-    @with_header_auth(ApplicationSettingsApi)
+    @with_header_auth(ApplicationSettingsApi, allow_mock=True)
     async def get_service_config(
         self,
         id: str,
@@ -1077,7 +1087,7 @@ class ApplicationSettingsMCPTools(BaseInstanaClient):
             return {"error": f"Failed to get service config: {e!s}"}
 
     @register_as_tool
-    @with_header_auth(ApplicationSettingsApi)
+    @with_header_auth(ApplicationSettingsApi, allow_mock=True)
     async def update_service_configs(self,
                             enabled: bool,
                             match_specification: List[Dict[str, str]],

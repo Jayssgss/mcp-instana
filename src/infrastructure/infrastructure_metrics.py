@@ -9,7 +9,7 @@ import logging
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
 
-from pydantic import StrictBool
+from pydantic import StrictBool  
 
 from src.core.utils import (
     BaseInstanaClient,
@@ -18,8 +18,12 @@ from src.core.utils import (
 )
 
 try:
-    from instana_client.api.infrastructure_metrics_api import InfrastructureMetricsApi
-    from instana_client.models.get_combined_metrics import GetCombinedMetrics
+    from instana_client.api.infrastructure_metrics_api import (
+        InfrastructureMetricsApi,  
+    )
+    from instana_client.models.get_combined_metrics import (
+        GetCombinedMetrics,  
+    )
 except ImportError as e:
     import logging
     logger = logging.getLogger(__name__)
@@ -37,7 +41,7 @@ class InfrastructureMetricsMCPTools(BaseInstanaClient):
         super().__init__(read_token=read_token, base_url=base_url)
 
     @register_as_tool
-    @with_header_auth(InfrastructureMetricsApi)
+    @with_header_auth(InfrastructureMetricsApi, allow_mock=True)
     async def get_infrastructure_metrics(self,
                                          offline: Optional[StrictBool] = False,
                                          snapshot_ids: Optional[Union[str, List[str]]] = None,
