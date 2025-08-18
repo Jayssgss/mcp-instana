@@ -9,7 +9,7 @@ from datetime import datetime
 from typing import Any, Dict, Optional
 
 # Import the correct class name (EventsApi with lowercase 'i')
-from instana_client.api.events_api import EventsApi  
+from instana_client.api.events_api import EventsApi
 
 from src.core.utils import BaseInstanaClient, register_as_tool, with_header_auth
 

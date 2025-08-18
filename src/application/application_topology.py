@@ -12,7 +12,7 @@ from src.core.utils import BaseInstanaClient, register_as_tool
 
 try:
     from instana_client.api.application_topology_api import (
-        ApplicationTopologyApi,  
+        ApplicationTopologyApi,
     )
     from instana_client.api_client import ApiClient
     from instana_client.configuration import Configuration

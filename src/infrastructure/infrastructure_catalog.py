@@ -10,10 +10,10 @@ from typing import Any, Dict, List, Optional
 # Import the necessary classes from the SDK
 try:
     from instana_client.api.infrastructure_catalog_api import (
-        InfrastructureCatalogApi,  
+        InfrastructureCatalogApi,
     )
-    from instana_client.api_client import ApiClient  
-    from instana_client.configuration import Configuration  
+    from instana_client.api_client import ApiClient
+    from instana_client.configuration import Configuration
 except ImportError as e:
     import logging
     logger = logging.getLogger(__name__)

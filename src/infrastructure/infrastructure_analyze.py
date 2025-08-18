@@ -11,21 +11,21 @@ from typing import Any, Dict, Optional, Union
 # Import the necessary classes from the SDK
 try:
     from instana_client.api.infrastructure_analyze_api import (
-        InfrastructureAnalyzeApi,  
+        InfrastructureAnalyzeApi,
     )
-    from instana_client.api_client import ApiClient  
-    from instana_client.configuration import Configuration  
-    from instana_client.models.get_available_metrics_query import (  
+    from instana_client.api_client import ApiClient
+    from instana_client.configuration import Configuration
+    from instana_client.models.get_available_metrics_query import (
         GetAvailableMetricsQuery,
     )
-    from instana_client.models.get_available_plugins_query import (  
+    from instana_client.models.get_available_plugins_query import (
         GetAvailablePluginsQuery,
     )
-    from instana_client.models.get_infrastructure_groups_query import (  
+    from instana_client.models.get_infrastructure_groups_query import (
         GetInfrastructureGroupsQuery,
     )
     from instana_client.models.get_infrastructure_query import (
-        GetInfrastructureQuery,  
+        GetInfrastructureQuery,
     )
 except ImportError as e:
     import logging
@@ -127,7 +127,7 @@ class InfrastructureAnalyzeMCPTools(BaseInstanaClient):
 
             # Import the GetAvailableMetricsQuery class
             try:
-                from instana_client.models.get_available_metrics_query import (  
+                from instana_client.models.get_available_metrics_query import (
                     GetAvailableMetricsQuery,
                 )
                 logger.debug("Successfully imported GetAvailableMetricsQuery")
@@ -395,7 +395,7 @@ class InfrastructureAnalyzeMCPTools(BaseInstanaClient):
             # Create the GetInfrastructureGroupsQuery object
             try:
                 # Import the model class
-                from instana_client.models.get_infrastructure_groups_query import (  
+                from instana_client.models.get_infrastructure_groups_query import (
                     GetInfrastructureGroupsQuery,
                 )
 
@@ -578,7 +578,7 @@ class InfrastructureAnalyzeMCPTools(BaseInstanaClient):
 
             # Import the GetAvailablePluginsQuery class
             try:
-                from instana_client.models.get_available_plugins_query import (  
+                from instana_client.models.get_available_plugins_query import (
                     GetAvailablePluginsQuery,
                 )
                 logger.debug("Successfully imported GetAvailablePluginsQuery")

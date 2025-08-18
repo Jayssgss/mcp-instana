@@ -19,7 +19,7 @@ from src.core.utils import (
 
 try:
     from instana_client.api.application_catalog_api import (
-        ApplicationCatalogApi,  
+        ApplicationCatalogApi,
     )
 
 except ImportError as e:

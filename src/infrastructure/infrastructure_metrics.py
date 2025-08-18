@@ -9,7 +9,7 @@ import logging
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
 
-from pydantic import StrictBool  
+from pydantic import StrictBool
 
 from src.core.utils import (
     BaseInstanaClient,
@@ -19,10 +19,10 @@ from src.core.utils import (
 
 try:
     from instana_client.api.infrastructure_metrics_api import (
-        InfrastructureMetricsApi,  
+        InfrastructureMetricsApi,
     )
     from instana_client.models.get_combined_metrics import (
-        GetCombinedMetrics,  
+        GetCombinedMetrics,
     )
 except ImportError as e:
     import logging
