@@ -50,7 +50,7 @@ class InfrastructureTopologyMCPTools(BaseInstanaClient):
         super().__init__(read_token=read_token, base_url=base_url)
 
     @register_as_tool
-    @with_header_auth(InfrastructureTopologyApi, allow_mock=True)
+    @with_header_auth(InfrastructureTopologyApi)
     async def get_related_hosts(self,
                                 snapshot_id: str,
                                 to_time: Optional[int] = None,
@@ -111,7 +111,7 @@ class InfrastructureTopologyMCPTools(BaseInstanaClient):
             return {"error": f"Failed to get related hosts: {e!s}"}
 
     @register_as_tool
-    @with_header_auth(InfrastructureTopologyApi, allow_mock=True)
+    @with_header_auth(InfrastructureTopologyApi)
     async def get_topology(self,
                            include_data: Optional[bool] = False,
                            ctx=None,

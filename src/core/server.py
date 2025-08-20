@@ -16,7 +16,7 @@ from typing import Any
 
 from dotenv import load_dotenv
 
-from src.prompts.prompt_loader import register_prompts
+from src.prompts import PROMPT_REGISTRY
 
 load_dotenv()
 
@@ -77,6 +77,7 @@ class MCPState:
     app_topology_client: Any = None
     app_analyze_client: Any = None
     app_settings_client: Any = None
+    app_global_alert_client: Any = None
 
 # Global variables to store credentials for lifespan
 _global_token = None
@@ -153,7 +154,48 @@ def create_app(token: str, base_url: str, port: int = 8000, enabled_categories: 
                 logger.error(f"Failed to register tool {tool_name}: {e}", exc_info=True)
 
         # Register prompts from the prompt registry
-        register_prompts(server)
+        # Get enabled prompt categories - use the same categories as tools
+        prompt_categories = get_prompt_categories()
+
+        # Use the same categories for prompts as for tools
+        enabled_prompt_categories = []
+        if enabled_categories.lower() == "all" or not enabled_categories:
+            enabled_prompt_categories = list(prompt_categories.keys())
+            logger.info("Enabling all prompt categories")
+        else:
+            enabled_prompt_categories = [cat.strip() for cat in enabled_categories.split(",") if cat.strip() in prompt_categories]
+            logger.info(f"Enabling prompt categories: {', '.join(enabled_prompt_categories)}")
+
+        # Register prompts to the server
+        logger.info("Registering prompts by category:")
+        registered_prompts = set()
+
+        for category, prompt_groups in prompt_categories.items():
+            if category in enabled_prompt_categories:
+                logger.info(f"  - {category}: {len(prompt_groups)} prompt groups")
+
+                for group_name, prompts in prompt_groups:
+                    prompt_count = len(prompts)
+                    logger.info(f"    - {group_name}: {prompt_count} prompts")
+
+                    for prompt_name, prompt_func in prompts:
+                        server.add_prompt(prompt_func)
+                        registered_prompts.add(prompt_name)
+                        logger.debug(f"      * Registered prompt: {prompt_name}")
+            else:
+                logger.info(f"  - {category}: DISABLED")
+
+        # Register any remaining prompts that might not be in categories
+        uncategorized_count = 0
+
+        # Just log the count of remaining prompts
+        remaining_prompts = len(PROMPT_REGISTRY) - len(registered_prompts)
+        if remaining_prompts > 0:
+            logger.info(f"  - uncategorized: {remaining_prompts} prompts (not registered)")
+
+        if uncategorized_count > 0:
+            logger.info(f"  - uncategorized: {uncategorized_count} prompts")
+
 
         return server, tools_registered
 
@@ -185,6 +227,9 @@ def get_client_categories():
         from src.application.application_alert_config import ApplicationAlertMCPTools
         from src.application.application_analyze import ApplicationAnalyzeMCPTools
         from src.application.application_catalog import ApplicationCatalogMCPTools
+        from src.application.application_global_alert_config import (
+            ApplicationGlobalAlertMCPTools,
+        )
         from src.application.application_metrics import ApplicationMetricsMCPTools
         from src.application.application_resources import ApplicationResourcesMCPTools
         from src.application.application_settings import ApplicationSettingsMCPTools
@@ -225,10 +270,70 @@ def get_client_categories():
             ('app_topology_client', ApplicationTopologyMCPTools),
             ('app_analyze_client', ApplicationAnalyzeMCPTools),
             ('app_settings_client', ApplicationSettingsMCPTools),
+            ('app_global_alert_client', ApplicationGlobalAlertMCPTools),
         ],
         "events": [
             ('events_client', AgentMonitoringEventsMCPTools),
         ]
+    }
+
+def get_prompt_categories():
+    """Get prompt categories organized by functionality"""
+    # Import the class-based prompts
+    from src.prompts.application.application_alerts import ApplicationAlertsPrompts
+    from src.prompts.application.application_catalog import ApplicationCatalogPrompts
+    from src.prompts.application.application_metrics import ApplicationMetricsPrompts
+    from src.prompts.application.application_resources import (
+        ApplicationResourcesPrompts,
+    )
+    from src.prompts.application.application_settings import ApplicationSettingsPrompts
+    from src.prompts.application.application_topology import ApplicationTopologyPrompts
+    from src.prompts.infrastructure.infrastructure_analyze import (
+        InfrastructureAnalyzePrompts,
+    )
+    from src.prompts.infrastructure.infrastructure_catalog import (
+        InfrastructureCatalogPrompts,
+    )
+    from src.prompts.infrastructure.infrastructure_metrics import (
+        InfrastructureMetricsPrompts,
+    )
+    from src.prompts.infrastructure.infrastructure_resources import (
+        InfrastructureResourcesPrompts,
+    )
+    from src.prompts.infrastructure.infrastructure_topology import (
+        InfrastructureTopologyPrompts,
+    )
+
+    # Use the get_prompts method to get all prompts from the classes
+    infra_analyze_prompts = InfrastructureAnalyzePrompts.get_prompts()
+    infra_metrics_prompts = InfrastructureMetricsPrompts.get_prompts()
+    infra_catalog_prompts = InfrastructureCatalogPrompts.get_prompts()
+    infra_topology_prompts = InfrastructureTopologyPrompts.get_prompts()
+    infra_resources_prompts = InfrastructureResourcesPrompts.get_prompts()
+    app_resources_prompts = ApplicationResourcesPrompts.get_prompts()
+    app_metrics_prompts = ApplicationMetricsPrompts.get_prompts()
+    app_catalog_prompts = ApplicationCatalogPrompts.get_prompts()
+    app_settings_prompts = ApplicationSettingsPrompts.get_prompts()
+    app_topology_prompts = ApplicationTopologyPrompts.get_prompts()
+    app_alert_prompts = ApplicationAlertsPrompts.get_prompts()
+
+    # Return the categories with their prompt groups
+    return {
+        "infra": [
+            ('infra_resources_prompts', infra_resources_prompts),
+            ('infra_catalog_prompts', infra_catalog_prompts),
+            ('infra_topology_prompts', infra_topology_prompts),
+            ('infra_analyze_prompts', infra_analyze_prompts),
+            ('infra_metrics_prompts', infra_metrics_prompts),
+        ],
+        "app": [
+            ('app_resources_prompts', app_resources_prompts),
+            ('app_metrics_prompts', app_metrics_prompts),
+            ('app_catalog_prompts', app_catalog_prompts),
+            ('app_settings_prompts', app_settings_prompts),
+            ('app_topology_prompts', app_topology_prompts),
+            ('app_alert_prompts', app_alert_prompts),
+        ],
     }
 
 def get_enabled_client_configs(enabled_categories: str):
@@ -236,7 +341,7 @@ def get_enabled_client_configs(enabled_categories: str):
     # Get client categories with lazy imports
     client_categories = get_client_categories()
 
-    if enabled_categories.lower() == "all":
+    if not enabled_categories or enabled_categories.lower() == "all":
         all_configs = []
         for category_clients in client_categories.values():
             all_configs.extend(category_clients)
@@ -284,7 +389,7 @@ def main():
             "--tools",
             type=str,
             metavar='<categories>',
-            help="Comma-separated list of tool categories to enable (--tools infra,app,events). If not provided, all tools are enabled."
+            help="Comma-separated list of tool categories to enable (--tools infra,app,events). Also controls which prompts are enabled. If not provided, all tools and prompts are enabled."
         )
         parser.add_argument(
             "--list-tools",

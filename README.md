@@ -6,14 +6,24 @@
   - [Architecture Overview](#architecture-overview)
   - [Workflow](#workflow)
   - [Prerequisites](#prerequisites)
-    - [Installing uv](#installing-uv)
-    - [Setting Up the Environment](#setting-up-the-environment)
+    - [Option 1: Install from PyPI (Recommended)](#option-1-install-from-pypi-recommended)
+    - [Option 2: Development Installation](#option-2-development-installation)
+      - [Installing uv](#installing-uv)
+      - [Setting Up the Environment](#setting-up-the-environment)
     - [Header-Based Authentication for Streamable HTTP Mode](#header-based-authentication-for-streamable-http-mode)
   - [Starting the Local MCP Server](#starting-the-local-mcp-server)
     - [Server Command Options](#server-command-options)
+      - [Using the CLI (PyPI Installation)](#using-the-cli-pypi-installation)
+      - [Using Development Installation](#using-development-installation)
     - [Starting in Streamable HTTP Mode](#starting-in-streamable-http-mode)
+      - [Using CLI (PyPI Installation)](#using-cli-pypi-installation)
+      - [Using Development Installation](#using-development-installation-1)
     - [Starting in Stdio Mode](#starting-in-stdio-mode)
+      - [Using CLI (PyPI Installation)](#using-cli-pypi-installation-1)
+      - [Using Development Installation](#using-development-installation-2)
     - [Tool Categories](#tool-categories)
+      - [Using CLI (PyPI Installation)](#using-cli-pypi-installation-2)
+      - [Using Development Installation](#using-development-installation-3)
     - [Verifying Server Status](#verifying-server-status)
     - [Common Startup Issues](#common-startup-issues)
   - [Setup and Usage](#setup-and-usage)
@@ -28,6 +38,8 @@
   - [Tool Filtering](#tool-filtering)
     - [Available Tool Categories](#available-tool-categories)
     - [Usage Examples](#usage-examples)
+      - [Using CLI (PyPI Installation)](#using-cli-pypi-installation-3)
+      - [Using Development Installation](#using-development-installation-4)
     - [Benefits of Tool Filtering](#benefits-of-tool-filtering)
   - [Example Prompts](#example-prompts)
   - [Troubleshooting](#troubleshooting)
@@ -111,7 +123,21 @@ sequenceDiagram
 
 ## Prerequisites
 
-### Installing uv
+### Option 1: Install from PyPI (Recommended)
+
+The easiest way to use mcp-instana is to install it directly from PyPI:
+
+```shell
+pip install mcp-instana
+```
+
+After installation, you can run the server using the `mcp-instana` command directly.
+
+### Option 2: Development Installation
+
+For development or local customization, you can clone and set up the project locally.
+
+#### Installing uv
 
 This project uses `uv`, a fast Python package installer and resolver. To install `uv`, you have several options:
 
@@ -127,7 +153,7 @@ brew install uv
 
 For more installation options and detailed instructions, visit the [uv documentation](https://github.com/astral-sh/uv).
 
-### Setting Up the Environment
+#### Setting Up the Environment
 
 After installing `uv`, set up the project environment by running:
 
@@ -159,7 +185,17 @@ Before configuring any MCP client (Claude Desktop, GitHub Copilot, or custom MCP
 
 ### Server Command Options
 
-The MCP server (`src/core/server.py`) supports the following command-line options:
+#### Using the CLI (PyPI Installation)
+
+If you installed mcp-instana from PyPI, use the `mcp-instana` command:
+
+```bash
+mcp-instana [OPTIONS]
+```
+
+#### Using Development Installation
+
+For local development, use the `uv run` command:
 
 ```bash
 uv run src/core/server.py [OPTIONS]
@@ -169,14 +205,35 @@ uv run src/core/server.py [OPTIONS]
 - `--transport <mode>`: Transport mode (choices: `streamable-http`, `stdio`)
 - `--debug`: Enable debug mode with additional logging
 - `--log-level <level>`: Set the logging level (choices: `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`)
-- `--tools <categories>`: Comma-separated list of tool categories to enable (e.g., `infra,app,events`)
+- `--tools <categories>`: Comma-separated list of tool categories to enable (e.g., infra,app,events). Enabling a category will also enable its related prompts. For example: `--tools infra` enables the infra tools and all infra-related prompts.
 - `--list-tools`: List all available tool categories and exit
 - `--port <port>`: Port to listen on (default: 8000)
 - `--help`: Show help message and exit
 
 ### Starting in Streamable HTTP Mode
 
-**Streamable HTTP mode** provides a REST API interface and is recommended for most use cases:
+**Streamable HTTP mode** provides a REST API interface and is recommended for most use cases.
+
+#### Using CLI (PyPI Installation)
+
+```bash
+# Start with all tools enabled (default)
+mcp-instana --transport streamable-http
+
+# Start with debug logging
+mcp-instana --transport streamable-http --debug
+
+# Start with a specific log level
+mcp-instana --transport streamable-http --log-level WARNING
+
+# Start with specific tool categories only
+mcp-instana --transport streamable-http --tools infra,events
+
+# Combine options (specific log level, custom tools)
+mcp-instana --transport streamable-http --log-level DEBUG --tools app,events
+```
+
+#### Using Development Installation
 
 ```bash
 # Start with all tools enabled (default)
@@ -188,10 +245,10 @@ uv run src/core/server.py --transport streamable-http --debug
 # Start with a specific log level
 uv run src/core/server.py --transport streamable-http --log-level WARNING
 
-# Start with specific tool categories only
+# Start with specific tool and prompts categories only
 uv run src/core/server.py --transport streamable-http --tools infra,events
 
-# Combine options (specific log level, custom tools)
+# Combine options (specific log level, custom tools and prompts)
 uv run src/core/server.py --transport streamable-http --log-level DEBUG --tools app,events
 ```
 
@@ -204,7 +261,23 @@ uv run src/core/server.py --transport streamable-http --log-level DEBUG --tools 
 
 ### Starting in Stdio Mode
 
-**Stdio mode** uses standard input/output for communication and requires environment variables for authentication:
+**Stdio mode** uses standard input/output for communication and requires environment variables for authentication.
+
+#### Using CLI (PyPI Installation)
+
+```bash
+# Set environment variables first
+export INSTANA_BASE_URL="https://your-instana-instance.instana.io"
+export INSTANA_API_TOKEN="your_instana_api_token"
+
+# Start the server (stdio is the default if no transport specified)
+mcp-instana
+
+# Or explicitly specify stdio mode
+mcp-instana --transport stdio
+```
+
+#### Using Development Installation
 
 ```bash
 # Set environment variables first
@@ -225,7 +298,20 @@ uv run src/core/server.py --transport stdio
 
 ### Tool Categories
 
-You can optimize server performance by enabling only the tool categories you need:
+You can optimize server performance by enabling only the tools and prompts categories you need:
+
+#### Using CLI (PyPI Installation)
+
+```bash
+# List all available categories
+mcp-instana --list-tools
+
+# Enable specific categories
+mcp-instana --transport streamable-http --tools infra,app
+mcp-instana --transport streamable-http --tools events
+```
+
+#### Using Development Installation
 
 ```bash
 # List all available categories
@@ -237,9 +323,9 @@ uv run src/core/server.py --transport streamable-http --tools events
 ```
 
 **Available Categories:**
-- **`infra`**: Infrastructure monitoring tools (resources, catalog, topology, analyze, metrics)
-- **`app`**: Application performance tools (resources, metrics, alerts, catalog, topology, analyze)
-- **`events`**: Event monitoring tools (Kubernetes events, agent monitoring)
+- **`infra`**: Infrastructure monitoring tools and prompts (resources, catalog, topology, analyze, metrics)
+- **`app`**: Application performance tools and prompts (resources, metrics, alerts, catalog, topology, analyze, settings, global alerts)
+- **`events`**: Event monitoring tools and prompts(Kubernetes events, agent monitoring)
 
 ### Verifying Server Status
 
@@ -308,7 +394,8 @@ Configure Claude Desktop to pass Instana credentials via headers:
     "Instana MCP Server": {
       "command": "npx",
       "args": [
-         "mcp-remote", "http://0.0.0.0:8000/mcp/",
+        "mcp-remote", "http://0.0.0.0:8000/mcp/",
+        "--allow-http",
         "--header", "instana-base-url: https://your-instana-instance.instana.io",
         "--header", "instana-api-token: your_instana_api_token"
       ]
@@ -335,7 +422,26 @@ get me all endpoints from Instana
 
 #### Stdio Mode
 
-**Configuration:**
+**Configuration using CLI (PyPI Installation - Recommended):**
+
+```json
+{
+  "mcpServers": {
+    "Instana MCP Server": {
+      "command": "mcp-instana",
+      "args": ["--transport", "stdio"],
+      "env": {
+        "INSTANA_BASE_URL": "https://your-instana-instance.instana.io",
+        "INSTANA_API_TOKEN": "your_instana_api_token"
+      }
+    }
+  }
+}
+```
+
+**Note:** If you encounter "command not found" errors, use the full path to mcp-instana. Find it with `which mcp-instana` and use that path instead.
+
+**Configuration using Development Installation:**
 
 ```json
 {
@@ -381,6 +487,7 @@ You can directly create or update `.vscode/mcp.json` with the following configur
       "command": "npx",
       "args": [
         "mcp-remote", "http://0.0.0.0:8000/mcp/",
+        "--allow-http",
         "--header", "instana-base-url: https://your-instana-instance.instana.io",
         "--header", "instana-api-token: your_instana_api_token"
       ],
@@ -403,6 +510,27 @@ You can directly create or update `.vscode/mcp.json` with the following configur
 #### Stdio Mode
 
 **Step 1: Create VS Code MCP Configuration**
+
+**Using CLI (PyPI Installation - Recommended):**
+
+Create `.vscode/mcp.json` in your project root:
+
+```json:.vscode/mcp.json
+{
+  "servers": {
+    "Instana MCP Server": {
+      "command": "mcp-instana",
+      "args": ["--transport", "stdio"],
+      "env": {
+        "INSTANA_BASE_URL": "https://your-instana-instance.instana.io",
+        "INSTANA_API_TOKEN": "your_instana_api_token"
+      }
+    }
+  }
+}
+```
+
+**Using Development Installation:**
 
 Create `.vscode/mcp.json` in your project root:
 
@@ -427,8 +555,10 @@ Create `.vscode/mcp.json` in your project root:
 ```
 
 **Note:** Replace the following values with your actual configuration:
-- `command`: Update the uv path to match your system's uv installation (e.g., `/path/to/your/uv/bin/uv` or `/usr/local/bin/uv`)
-- `--directory`: Update with the absolute path to your mcp-instana project directory
+- For CLI installation: Ensure `mcp-instana` is in your PATH
+- For development installation: 
+  - `command`: Update the uv path to match your system's uv installation (e.g., `/path/to/your/uv/bin/uv` or `/usr/local/bin/uv`)
+  - `--directory`: Update with the absolute path to your mcp-instana project directory
 - `INSTANA_BASE_URL`: Your Instana instance URL
 - `INSTANA_API_TOKEN`: Your Instana API token
 
@@ -571,6 +701,24 @@ The MCP server supports selective tool loading to optimize performance and reduc
   - Events: Kubernetes events, agent monitoring, and system event tracking
 
 ### Usage Examples
+
+#### Using CLI (PyPI Installation)
+
+```bash
+# Enable only infrastructure and events tools
+mcp-instana --tools infra,events --transport streamable-http
+
+# Enable only application tools
+mcp-instana --tools app --transport streamable-http
+
+# Enable all tools (default behavior)
+mcp-instana --transport streamable-http
+
+# List all available tool categories and their tools
+mcp-instana --list-tools
+```
+
+#### Using Development Installation
 
 ```bash
 # Enable only infrastructure and events tools

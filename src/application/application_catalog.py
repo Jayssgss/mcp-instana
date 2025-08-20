@@ -39,7 +39,7 @@ class ApplicationCatalogMCPTools(BaseInstanaClient):
         super().__init__(read_token=read_token, base_url=base_url)
 
     @register_as_tool
-    @with_header_auth(ApplicationCatalogApi, allow_mock=True)
+    @with_header_auth(ApplicationCatalogApi)
     async def get_application_tag_catalog(self,
                                           use_case: Optional[str] = None,
                                           data_source: Optional[str] = None,
@@ -107,7 +107,7 @@ class ApplicationCatalogMCPTools(BaseInstanaClient):
 
 
     @register_as_tool
-    @with_header_auth(ApplicationCatalogApi, allow_mock=True)
+    @with_header_auth(ApplicationCatalogApi)
     async def get_application_metric_catalog(self, ctx=None, api_client=None) -> Dict[str, Any]:
         """
         This API endpoint retrieves  all available metric definitions for application monitoring.

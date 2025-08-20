@@ -31,7 +31,7 @@ class ApplicationAlertMCPTools(BaseInstanaClient):
         super().__init__(read_token=read_token, base_url=base_url)
 
     @register_as_tool
-    @with_header_auth(ApplicationAlertConfigurationApi, allow_mock=True)
+    @with_header_auth(ApplicationAlertConfigurationApi)
     async def find_application_alert_config(self,
                                             id: str,
                                             valid_on: Optional[int] = None,
@@ -79,7 +79,7 @@ class ApplicationAlertMCPTools(BaseInstanaClient):
 
 
     @register_as_tool
-    @with_header_auth(ApplicationAlertConfigurationApi, allow_mock=True)
+    @with_header_auth(ApplicationAlertConfigurationApi)
     async def find_application_alert_config_versions(self,
                                                      id: str,
                                                      ctx=None, api_client=None) -> Dict[str, Any]:
@@ -127,7 +127,7 @@ class ApplicationAlertMCPTools(BaseInstanaClient):
             return {"error": f"Failed to get application alert config versions: {e!s}"}
 
     @register_as_tool
-    @with_header_auth(ApplicationAlertConfigurationApi, allow_mock=True)
+    @with_header_auth(ApplicationAlertConfigurationApi)
     async def get_application_alert_configs(self,
                                             application_id: Optional[str] = None,
                                             alert_ids: Optional[List[str]] = None,
@@ -174,7 +174,7 @@ class ApplicationAlertMCPTools(BaseInstanaClient):
             return {"error": f"Failed to get application alert configs: {e!s}"}
 
     @register_as_tool
-    @with_header_auth(ApplicationAlertConfigurationApi, allow_mock=True)
+    @with_header_auth(ApplicationAlertConfigurationApi)
     async def delete_application_alert_config(self,
                                               id: str,
                                               ctx=None, api_client=None) -> Dict[str, Any]:
@@ -215,7 +215,7 @@ class ApplicationAlertMCPTools(BaseInstanaClient):
             return {"error": f"Failed to delete application alert config: {e!s}"}
 
     @register_as_tool
-    @with_header_auth(ApplicationAlertConfigurationApi, allow_mock=True)
+    @with_header_auth(ApplicationAlertConfigurationApi)
     async def enable_application_alert_config(self,
                                               id: str,
                                               ctx=None, api_client=None) -> Dict[str, Any]:
@@ -260,7 +260,7 @@ class ApplicationAlertMCPTools(BaseInstanaClient):
             return {"error": f"Failed to enable application alert config: {e!s}"}
 
     @register_as_tool
-    @with_header_auth(ApplicationAlertConfigurationApi, allow_mock=True)
+    @with_header_auth(ApplicationAlertConfigurationApi)
     async def disable_application_alert_config(self,
                                                id: str,
                                                ctx=None, api_client=None) -> Dict[str, Any]:
@@ -305,7 +305,7 @@ class ApplicationAlertMCPTools(BaseInstanaClient):
             return {"error": f"Failed to disable application alert config: {e!s}"}
 
     @register_as_tool
-    @with_header_auth(ApplicationAlertConfigurationApi, allow_mock=True)
+    @with_header_auth(ApplicationAlertConfigurationApi)
     async def restore_application_alert_config(self,
                                                id: str,
                                                created: int,
@@ -355,7 +355,7 @@ class ApplicationAlertMCPTools(BaseInstanaClient):
             return {"error": f"Failed to restore application alert config: {e!s}"}
 
     @register_as_tool
-    @with_header_auth(ApplicationAlertConfigurationApi, allow_mock=True)
+    @with_header_auth(ApplicationAlertConfigurationApi)
     async def update_application_alert_config_baseline(self,
                                                        id: str,
                                                        ctx=None, api_client=None) -> Dict[str, Any]:
@@ -400,7 +400,7 @@ class ApplicationAlertMCPTools(BaseInstanaClient):
             return {"error": f"Failed to update application alert config baseline: {e!s}"}
 
     @register_as_tool
-    @with_header_auth(ApplicationAlertConfigurationApi, allow_mock=True)
+    @with_header_auth(ApplicationAlertConfigurationApi)
     async def create_application_alert_config(self,
                                               payload: Union[Dict[str, Any], str],
                                               ctx=None, api_client=None) -> Dict[str, Any]:
@@ -522,7 +522,7 @@ class ApplicationAlertMCPTools(BaseInstanaClient):
             return {"error": f"Failed to create application alert config: {e!s}"}
 
     @register_as_tool
-    @with_header_auth(ApplicationAlertConfigurationApi, allow_mock=True)
+    @with_header_auth(ApplicationAlertConfigurationApi)
     async def update_application_alert_config(self,
                                               id: str,
                                               payload: Union[Dict[str, Any], str],

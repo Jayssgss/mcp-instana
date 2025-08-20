@@ -51,7 +51,7 @@ class InfrastructureAnalyzeMCPTools(BaseInstanaClient):
         super().__init__(read_token=read_token, base_url=base_url)
 
     @register_as_tool
-    @with_header_auth(InfrastructureAnalyzeApi, allow_mock=True)
+    @with_header_auth(InfrastructureAnalyzeApi)
     async def get_available_metrics(self,
                                     payload: Optional[Union[Dict[str, Any], str]] = None,
                                     ctx=None, api_client=None) -> Dict[str, Any]:
@@ -187,7 +187,7 @@ class InfrastructureAnalyzeMCPTools(BaseInstanaClient):
             return {"error": f"Failed to get available metrics: {e!s}"}
 
     @register_as_tool
-    @with_header_auth(InfrastructureAnalyzeApi, allow_mock=True)
+    @with_header_auth(InfrastructureAnalyzeApi)
     async def get_entities(self,
                            payload: Optional[Union[Dict[str, Any], str]] = None,
                            ctx=None, api_client=None) -> Dict[str, Any]:
@@ -302,7 +302,7 @@ class InfrastructureAnalyzeMCPTools(BaseInstanaClient):
             return {"error": f"Failed to get entities: {e!s}"}
 
     @register_as_tool
-    @with_header_auth(InfrastructureAnalyzeApi, allow_mock=True)
+    @with_header_auth(InfrastructureAnalyzeApi)
     async def get_aggregated_entity_groups(self,
                                            payload: Optional[Union[Dict[str, Any], str]] = None,
                                            ctx=None, api_client=None) -> Dict[str, Any]:
@@ -503,7 +503,7 @@ class InfrastructureAnalyzeMCPTools(BaseInstanaClient):
             }
 
     @register_as_tool
-    @with_header_auth(InfrastructureAnalyzeApi, allow_mock=True)
+    @with_header_auth(InfrastructureAnalyzeApi)
     async def get_available_plugins(self,
                                     payload: Optional[Union[Dict[str, Any], str]] = None,
                                     ctx=None, api_client=None) -> Dict[str, Any]:

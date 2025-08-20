@@ -38,7 +38,7 @@ class InfrastructureResourcesMCPTools(BaseInstanaClient):
         super().__init__(read_token=read_token, base_url=base_url)
 
     @register_as_tool
-    @with_header_auth(InfrastructureResourcesApi, allow_mock=True)
+    @with_header_auth(InfrastructureResourcesApi)
     async def get_monitoring_state(self, ctx=None, api_client=None) -> Dict[str, Any]:
         """
         Get the current monitoring state of the Instana system. This tool retrieves details about the number of monitored hosts and serverless entities in your environment.
@@ -64,7 +64,7 @@ class InfrastructureResourcesMCPTools(BaseInstanaClient):
             return {"error": f"Failed to get monitoring state: {e!s}"}
 
     @register_as_tool
-    @with_header_auth(InfrastructureResourcesApi, allow_mock=True)
+    @with_header_auth(InfrastructureResourcesApi)
     async def get_plugin_payload(self,
                                  snapshot_id: str,
                                  payload_key: str,
@@ -105,7 +105,7 @@ class InfrastructureResourcesMCPTools(BaseInstanaClient):
             return {"error": f"Failed to get plugin payload: {e!s}"}
 
     @register_as_tool
-    @with_header_auth(InfrastructureResourcesApi, allow_mock=True)
+    @with_header_auth(InfrastructureResourcesApi)
     async def get_snapshot(self,
                            snapshot_id: str,
                            to_time: Optional[int] = None,
@@ -213,7 +213,7 @@ class InfrastructureResourcesMCPTools(BaseInstanaClient):
             return {"error": f"Failed to get snapshot: {e!s}"}
 
     @register_as_tool
-    @with_header_auth(InfrastructureResourcesApi, allow_mock=True)
+    @with_header_auth(InfrastructureResourcesApi)
     async def get_snapshots(self,
                             query: Optional[str] = None,
                             from_time: Optional[int] = None,
@@ -368,7 +368,7 @@ class InfrastructureResourcesMCPTools(BaseInstanaClient):
 
 
     @register_as_tool
-    @with_header_auth(InfrastructureResourcesApi, allow_mock=True)
+    @with_header_auth(InfrastructureResourcesApi)
     async def post_snapshots(self,
                              snapshot_ids: Union[List[str], str],
                              to_time: Optional[int] = None,
@@ -547,7 +547,7 @@ class InfrastructureResourcesMCPTools(BaseInstanaClient):
 
 
     @register_as_tool
-    @with_header_auth(InfrastructureResourcesApi, allow_mock=True)
+    @with_header_auth(InfrastructureResourcesApi)
     async def software_versions(self, ctx=None, api_client=None) -> Dict[str, Any]:
         """
         Get information about installed software versions across the monitored infrastructure.

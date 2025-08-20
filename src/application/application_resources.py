@@ -33,7 +33,7 @@ class ApplicationResourcesMCPTools(BaseInstanaClient):
         super().__init__(read_token=read_token, base_url=base_url)
 
     @register_as_tool
-    @with_header_auth(ApplicationResourcesApi, allow_mock=True)
+    @with_header_auth(ApplicationResourcesApi)
     async def get_application_endpoints(self,
                                         name_filter: Optional[str] = None,
                                         types: Optional[List[str]] = None,
@@ -100,7 +100,7 @@ class ApplicationResourcesMCPTools(BaseInstanaClient):
             return {"error": f"Failed to get application endpoints: {e!s}"}
 
     @register_as_tool
-    @with_header_auth(ApplicationResourcesApi, allow_mock=True)
+    @with_header_auth(ApplicationResourcesApi)
     async def get_application_services(self,
                                        name_filter: Optional[str] = None,
                                        window_size: Optional[int] = None,
@@ -204,7 +204,7 @@ class ApplicationResourcesMCPTools(BaseInstanaClient):
 
 
     @register_as_tool
-    @with_header_auth(ApplicationResourcesApi, allow_mock=True)
+    @with_header_auth(ApplicationResourcesApi)
     async def get_applications(self,
                                name_filter: Optional[str] = None,
                                window_size: Optional[int] = None,
@@ -283,7 +283,7 @@ class ApplicationResourcesMCPTools(BaseInstanaClient):
 
 
     @register_as_tool
-    @with_header_auth(ApplicationResourcesApi, allow_mock=True)
+    @with_header_auth(ApplicationResourcesApi)
     async def get_services(self,
                            name_filter: Optional[str] = None,
                            window_size: Optional[int] = None,

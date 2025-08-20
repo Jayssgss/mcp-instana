@@ -176,7 +176,23 @@ class TestMCPServer(unittest.TestCase):
         # Verify that logger.error was called but don't actually log anything
         mock_logger.error.assert_called_with("Error creating app", exc_info=True)
 
-    def test_get_enabled_client_configs_all(self):
+    @patch('src.core.server.get_client_categories')
+    def test_get_enabled_client_configs_all(self, mock_get_categories):
+        # Mock the client categories
+        mock_get_categories.return_value = {
+            "infra": [
+                ('infra_client', MagicMock),
+                ('infra_catalog_client', MagicMock),
+            ],
+            "app": [
+                ('app_resource_client', MagicMock),
+                ('app_metrics_client', MagicMock),
+            ],
+            "events": [
+                ('events_client', MagicMock),
+            ]
+        }
+
         configs = get_enabled_client_configs("all")
         self.assertGreater(len(configs), 0)
         for config in configs:
@@ -185,7 +201,23 @@ class TestMCPServer(unittest.TestCase):
             self.assertIsInstance(config[0], str)
             self.assertTrue(callable(config[1]) or isinstance(config[1], type))
 
-    def test_get_enabled_client_configs_specific(self):
+    @patch('src.core.server.get_client_categories')
+    def test_get_enabled_client_configs_specific(self, mock_get_categories):
+        # Mock the client categories
+        mock_get_categories.return_value = {
+            "infra": [
+                ('infra_client', MagicMock),
+                ('infra_catalog_client', MagicMock),
+            ],
+            "app": [
+                ('app_resource_client', MagicMock),
+                ('app_metrics_client', MagicMock),
+            ],
+            "events": [
+                ('events_client', MagicMock),
+            ]
+        }
+
         configs = get_enabled_client_configs("events")
         self.assertGreater(len(configs), 0)
         for config in configs:
@@ -348,6 +380,88 @@ class TestMCPServer(unittest.TestCase):
                     except AssertionError:
                         mock_logger_error.assert_any_call("Failed to create MCP server: General error")
                     mock_exit.assert_called_with(1)
+
+class TestPromptCategories(unittest.TestCase):
+    """Test the prompt category filtering functionality"""
+
+    @patch('src.core.server.FastMCP')
+    @patch('src.core.server.create_clients')
+    @patch('src.core.server.logger')
+    def test_app_category_only(self, mock_logger, mock_create_clients, mock_fast_mcp):
+        """Test that only app prompts are registered when app category is enabled"""
+        mock_server = MagicMock()
+        mock_fast_mcp.return_value = mock_server
+        mock_state = MagicMock()
+        mock_create_clients.return_value = mock_state
+
+        # Call create_app with only app category enabled
+        create_app("test_token", "https://test.instana.io", 8000, "app")
+
+        # Check that only app prompts were registered
+        registered_categories = []
+        for call in mock_logger.info.call_args_list:
+            args = call[0]
+            if len(args) > 0 and isinstance(args[0], str):
+                if args[0].startswith("  - app:") and "DISABLED" not in args[0]:
+                    registered_categories.append("app")
+                if args[0].startswith("  - infra:") and "DISABLED" not in args[0]:
+                    registered_categories.append("infra")
+
+        self.assertIn("app", registered_categories)
+        self.assertNotIn("infra", registered_categories)
+
+    @patch('src.core.server.FastMCP')
+    @patch('src.core.server.create_clients')
+    @patch('src.core.server.logger')
+    def test_infra_category_only(self, mock_logger, mock_create_clients, mock_fast_mcp):
+        """Test that only infra prompts are registered when infra category is enabled"""
+        mock_server = MagicMock()
+        mock_fast_mcp.return_value = mock_server
+        mock_state = MagicMock()
+        mock_create_clients.return_value = mock_state
+
+        # Call create_app with only infra category enabled
+        create_app("test_token", "https://test.instana.io", 8000, "infra")
+
+        # Check that only infra prompts were registered
+        registered_categories = []
+        for call in mock_logger.info.call_args_list:
+            args = call[0]
+            if len(args) > 0 and isinstance(args[0], str):
+                if args[0].startswith("  - app:") and "DISABLED" not in args[0]:
+                    registered_categories.append("app")
+                if args[0].startswith("  - infra:") and "DISABLED" not in args[0]:
+                    registered_categories.append("infra")
+
+        self.assertIn("infra", registered_categories)
+        self.assertNotIn("app", registered_categories)
+
+    @patch('src.core.server.FastMCP')
+    @patch('src.core.server.create_clients')
+    @patch('src.core.server.logger')
+    def test_both_categories(self, mock_logger, mock_create_clients, mock_fast_mcp):
+        """Test that both app and infra prompts are registered when both categories are enabled"""
+        mock_server = MagicMock()
+        mock_fast_mcp.return_value = mock_server
+        mock_state = MagicMock()
+        mock_create_clients.return_value = mock_state
+
+        # Call create_app with both categories enabled
+        create_app("test_token", "https://test.instana.io", 8000, "app,infra")
+
+        # Check that both app and infra prompts were registered
+        registered_categories = []
+        for call in mock_logger.info.call_args_list:
+            args = call[0]
+            if len(args) > 0 and isinstance(args[0], str):
+                if args[0].startswith("  - app:") and "DISABLED" not in args[0]:
+                    registered_categories.append("app")
+                if args[0].startswith("  - infra:") and "DISABLED" not in args[0]:
+                    registered_categories.append("infra")
+
+        self.assertIn("app", registered_categories)
+        self.assertIn("infra", registered_categories)
+
 
 class TestMCPServerAsync(unittest.TestCase):
     """Test the async functions in the MCP Server module"""
@@ -632,6 +746,100 @@ class TestMCPServerAsync(unittest.TestCase):
                     self.assertIn("infra:", output)
                     self.assertIn("app:", output)
                     self.assertIn("events:", output)
+
+    @patch('src.core.server.argparse.ArgumentParser')
+    @patch('src.core.server.create_app')
+    @patch('src.core.server.sys.argv', ['mcp_server.py', '--tools', 'app'])
+    def test_app_tools_only_cli(self, mock_create_app, mock_arg_parser):
+        """Test that --tools app enables only app tools and prompts"""
+        # Set up mocks
+        mock_app = MagicMock()
+        mock_create_app.return_value = (mock_app, 1)
+
+        mock_parser = MagicMock()
+        mock_arg_parser.return_value = mock_parser
+
+        mock_args = MagicMock()
+        mock_args.transport = None
+        mock_args.debug = False
+        mock_args.tools = "app"
+        mock_args.help = False
+        mock_args.list_tools = False
+        mock_parser.parse_args.return_value = mock_args
+
+        # Run the main function with patched sys.exit
+        with patch('src.core.server.sys.exit'):
+            with patch('src.core.server.logger.info'):
+                main()
+
+                # Verify that create_app was called with the correct categories
+                mock_create_app.assert_called_once()
+                args, kwargs = mock_create_app.call_args
+                self.assertEqual(kwargs.get('enabled_categories', None) or args[3], "app")
+
+    @patch('src.core.server.argparse.ArgumentParser')
+    @patch('src.core.server.create_app')
+    @patch('src.core.server.sys.argv', ['mcp_server.py', '--tools', 'infra'])
+    def test_infra_tools_only_cli(self, mock_create_app, mock_arg_parser):
+        """Test that --tools infra enables only infra tools and prompts"""
+        # Set up mocks
+        mock_app = MagicMock()
+        mock_create_app.return_value = (mock_app, 1)
+
+        mock_parser = MagicMock()
+        mock_arg_parser.return_value = mock_parser
+
+        mock_args = MagicMock()
+        mock_args.transport = None
+        mock_args.debug = False
+        mock_args.tools = "infra"
+        mock_args.help = False
+        mock_args.list_tools = False
+        mock_parser.parse_args.return_value = mock_args
+
+        # Run the main function with patched sys.exit
+        with patch('src.core.server.sys.exit'):
+            with patch('src.core.server.logger.info'):
+                main()
+
+                # Verify that create_app was called with the correct categories
+                mock_create_app.assert_called_once()
+                args, kwargs = mock_create_app.call_args
+                self.assertEqual(kwargs.get('enabled_categories', None) or args[3], "infra")
+
+    @patch('src.core.server.argparse.ArgumentParser')
+    @patch('src.core.server.create_app')
+    @patch('src.core.server.sys.argv', ['mcp_server.py', '--tools', 'app,infra'])
+    def test_app_infra_tools_cli(self, mock_create_app, mock_arg_parser):
+        """Test that --tools app,infra enables both app and infra tools and prompts"""
+        # Set up mocks
+        mock_app = MagicMock()
+        mock_create_app.return_value = (mock_app, 1)
+
+        mock_parser = MagicMock()
+        mock_arg_parser.return_value = mock_parser
+
+        mock_args = MagicMock()
+        mock_args.transport = None
+        mock_args.debug = False
+        mock_args.tools = "app,infra"
+        mock_args.help = False
+        mock_args.list_tools = False
+        mock_parser.parse_args.return_value = mock_args
+
+        # Run the main function with patched sys.exit
+        with patch('src.core.server.sys.exit'):
+            with patch('src.core.server.logger.info'):
+                main()
+
+                # Verify that create_app was called with the correct categories
+                mock_create_app.assert_called_once()
+                args, kwargs = mock_create_app.call_args
+
+                # The order might be different, so we need to check that both are included
+                enabled_cats = kwargs.get('enabled_categories', None) or args[3]
+                self.assertIn("app", enabled_cats)
+                self.assertIn("infra", enabled_cats)
 
     @patch('src.core.server.argparse.ArgumentParser')
     @patch('src.core.server.create_app')

@@ -24,7 +24,7 @@ class AgentMonitoringEventsMCPTools(BaseInstanaClient):
         super().__init__(read_token=read_token, base_url=base_url)
 
     @register_as_tool
-    @with_header_auth(EventsApi, allow_mock=True)
+    @with_header_auth(EventsApi)
     async def get_event(self, event_id: str, ctx=None, api_client=None) -> Dict[str, Any]:
         """
         Get a specific event by ID.
@@ -47,7 +47,7 @@ class AgentMonitoringEventsMCPTools(BaseInstanaClient):
             return {"error": f"Failed to get event: {e!s}"}
 
     @register_as_tool
-    @with_header_auth(EventsApi, allow_mock=True)
+    @with_header_auth(EventsApi)
     async def get_kubernetes_info_events(self,
                                          from_time: Optional[int] = None,
                                          to_time: Optional[int] = None,
@@ -287,7 +287,7 @@ class AgentMonitoringEventsMCPTools(BaseInstanaClient):
             }
 
     @register_as_tool
-    @with_header_auth(EventsApi, allow_mock=True)
+    @with_header_auth(EventsApi)
     async def get_agent_monitoring_events(self,
                                           query: Optional[str] = None,
                                           from_time: Optional[int] = None,

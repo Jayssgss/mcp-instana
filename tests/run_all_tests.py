@@ -286,8 +286,8 @@ def run_all_tests(test_path: Optional[str] = None, verbose: bool = False) -> boo
             'tests.application.test_application_catalog',
             'tests.application.test_application_metrics',
             'tests.application.test_application_resources',
-            'tests.application.test_application_settings',
             'tests.application.test_application_topology',
+            'tests.application.test_application_global_alert_config',
             'tests.core.test_server',
             'tests.core.test_utils',
             'tests.event.test_events_tools',
@@ -297,7 +297,16 @@ def run_all_tests(test_path: Optional[str] = None, verbose: bool = False) -> boo
             'tests.infrastructure.test_infrastructure_resources',
             'tests.infrastructure.test_infrastructure_topology',
             'tests.log.test_log_alert_configuration',
-            'tests.prompts.test_mcp_prompts'
+            'tests.prompts.application.test_application_alerts',
+            'tests.prompts.application.test_application_metrics',
+            'tests.prompts.application.test_application_catalog',
+            'tests.prompts.application.test_application_resources',
+            'tests.prompts.application.test_application_topology',
+            'tests.prompts.infrastructure.test_infrastructure_analyze',
+            'tests.prompts.infrastructure.test_infrastructure_metrics',
+            'tests.prompts.infrastructure.test_infrastructure_resources',
+            'tests.prompts.infrastructure.test_infrastructure_topology',
+            'tests.prompts.infrastructure.test_infrastructure_catalog',
         ]
 
         all_tests = unittest.TestSuite()

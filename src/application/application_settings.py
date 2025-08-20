@@ -6,11 +6,14 @@ This module provides application settings-specific MCP tools for Instana monitor
 The API endpoints of this group provides a way to create, read, update, delete (CRUD) for various configuration settings.
 """
 
+import logging
 import re
 import sys
 import traceback
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
+
+logger = logging.getLogger(__name__)
 
 from src.core.utils import BaseInstanaClient, register_as_tool, with_header_auth
 
@@ -72,7 +75,7 @@ class ApplicationSettingsMCPTools(BaseInstanaClient):
             raise
 
     @register_as_tool
-    @with_header_auth(ApplicationSettingsApi, allow_mock=True)
+    @with_header_auth(ApplicationSettingsApi)
     async def get_all_applications_configs(self,
                              ctx=None,
                              api_client=None) -> List[Dict[str, Any]]:
@@ -106,64 +109,152 @@ class ApplicationSettingsMCPTools(BaseInstanaClient):
             return [{"error": f"Failed to get all applications: {e!s}"}]
 
     @register_as_tool
-    @with_header_auth(ApplicationSettingsApi, allow_mock=True)
+    @with_header_auth(ApplicationSettingsApi)
     async def add_application_config(self,
-                               access_rules: List[Dict[str, str]],
-                               boundary_scope: str,
-                               label: str,
-                               scope: str,
-                               tag_filter_expression: Optional[List[Dict[str, str]]] = None,
+                               payload: Union[Dict[str, Any], str],
                                ctx=None,
                                api_client=None) -> Dict[str, Any]:
         """
         Add a new Application Perspective configuration.
         This tool allows you to create a new Application Perspective with specified settings.
-        Args:
-            accessRules: List of access rules for the application perspective
-            boundaryScope: Boundary scope for the application perspective
-            label: Label for the application perspective
-            scope: Scope of the application perspective
-            tagFilterExpression: Tag filter expression for the application perspective (Optional)
-            ctx: The MCP context (optional)
+        Sample Payload: {
+        "accessRules": [
+            {
+            "accessType": "READ_WRITE",
+            "relationType": "GLOBAL",
+            "relatedId": null
+            }
+        ],
+        "boundaryScope": "INBOUND",
+        "label": "Discount Build 6987",
+        "scope": "INCLUDE_IMMEDIATE_DOWNSTREAM_DATABASE_AND_MESSAGING",
+        "tagFilterExpression": {
+            "type": "EXPRESSION",
+            "logicalOperator": "AND",
+            "elements": [
+            {
+                "type": "TAG_FILTER",
+                "name": "kubernetes.label",
+                "stringValue": "stage=canary",
+                "numberValue": null,
+                "booleanValue": null,
+                "key": "stage",
+                "value": "canary",
+                "operator": "EQUALS",
+                "entity": "DESTINATION"
+            },
+            {
+                "type": "TAG_FILTER",
+                "name": "kubernetes.label",
+                "stringValue": "build=6987",
+                "numberValue": null,
+                "booleanValue": null,
+                "key": "build",
+                "value": "6987",
+                "operator": "EQUALS",
+                "entity": "DESTINATION"
+            },
+            {
+                "type": "TAG_FILTER",
+                "name": "kubernetes.label",
+                "stringValue": "app=discount",
+                "numberValue": null,
+                "booleanValue": null,
+                "key": "app",
+                "value": "discount",
+                "operator": "EQUALS",
+                "entity": "DESTINATION"
+            }
+            ]
+        }
+        }
         Returns:
             Dictionary containing the created application perspective configuration or error information
         """
         try:
-            debug_print("Adding new application perspective configuration")
-            if not (access_rules or boundary_scope or label or scope):
-                return {"error": "Required enitities are missing or invalid"}
 
-            # Create a NewApplicationConfig instance with the provided parameters
-            request_body = {
-                "access_rules": access_rules,
-                "boundary_scope": boundary_scope,
-                "label": label,
-                "scope": scope,
-                "tag_filter_expression": tag_filter_expression
-            }
-            new_application_config = NewApplicationConfig(**request_body)
-            debug_print(f"New Application Config: {new_application_config.to_dict()}")
+            if not payload:
+                return {"error": "payload is required"}
+
+            # Parse the payload if it's a string
+            if isinstance(payload, str):
+                logger.debug("Payload is a string, attempting to parse")
+                try:
+                    import json
+                    try:
+                        parsed_payload = json.loads(payload)
+                        logger.debug("Successfully parsed payload as JSON")
+                        request_body = parsed_payload
+                    except json.JSONDecodeError as e:
+                        logger.debug(f"JSON parsing failed: {e}, trying with quotes replaced")
+
+                        # Try replacing single quotes with double quotes
+                        fixed_payload = payload.replace("'", "\"")
+                        try:
+                            parsed_payload = json.loads(fixed_payload)
+                            logger.debug("Successfully parsed fixed JSON")
+                            request_body = parsed_payload
+                        except json.JSONDecodeError:
+                            # Try as Python literal
+                            import ast
+                            try:
+                                parsed_payload = ast.literal_eval(payload)
+                                logger.debug("Successfully parsed payload as Python literal")
+                                request_body = parsed_payload
+                            except (SyntaxError, ValueError) as e2:
+                                logger.debug(f"Failed to parse payload string: {e2}")
+                                return {"error": f"Invalid payload format: {e2}", "payload": payload}
+                except Exception as e:
+                    logger.debug(f"Error parsing payload string: {e}")
+                    return {"error": f"Failed to parse payload: {e}", "payload": payload}
+            else:
+                # If payload is already a dictionary, use it directly
+                logger.debug("Using provided payload dictionary")
+                request_body = payload
+
+            # Import the NewApplicationConfig class
+            try:
+                from instana_client.models.new_application_config import (
+                    NewApplicationConfig,
+                )
+                logger.debug("Successfully imported NewApplicationConfig")
+            except ImportError as e:
+                logger.debug(f"Error importing NewApplicationConfig: {e}")
+                return {"error": f"Failed to import NewApplicationConfig: {e!s}"}
+
+            # Create an NewApplicationConfig object from the request body
+            try:
+                logger.debug(f"Creating NewApplicationConfig with params: {request_body}")
+                config_object = NewApplicationConfig(**request_body)
+                logger.debug("Successfully created config object")
+            except Exception as e:
+                logger.debug(f"Error creating NewApplicationConfig: {e}")
+                return {"error": f"Failed to create config object: {e!s}"}
 
             # Call the add_application_config method from the SDK
+            logger.debug("Calling add_application_config with config object")
             result = api_client.add_application_config(
-                new_application_config=new_application_config
+                new_application_config=config_object
             )
 
             # Convert the result to a dictionary
             if hasattr(result, 'to_dict'):
                 result_dict = result.to_dict()
             else:
-                result_dict = result
+                # If it's already a dict or another format, use it as is
+                result_dict = result or {
+                    "success": True,
+                    "message": "Create new application config"
+                }
 
-            debug_print(f"Result from add_application_config: {result_dict}")
+            logger.debug(f"Result from add_application_config: {result_dict}")
             return result_dict
         except Exception as e:
-            debug_print(f"Error in add_application_config: {e}")
-            traceback.print_exc(file=sys.stderr)
-            return {"error": f"Failed to add application configuration: {e!s}"}
+            logger.error(f"Error in add_application_config: {e}")
+            return {"error": f"Failed to add new application config: {e!s}"}
 
     @register_as_tool
-    @with_header_auth(ApplicationSettingsApi, allow_mock=True)
+    @with_header_auth(ApplicationSettingsApi)
     async def delete_application_config(self,
                                   id: str,
                                   ctx=None,
@@ -201,7 +292,7 @@ class ApplicationSettingsMCPTools(BaseInstanaClient):
             return {"error": f"Failed to delete application configuration: {e!s}"}
 
     @register_as_tool
-    @with_header_auth(ApplicationSettingsApi, allow_mock=True)
+    @with_header_auth(ApplicationSettingsApi)
     async def get_application_config(self,
                                   id: str,
                                   ctx=None,
@@ -236,16 +327,11 @@ class ApplicationSettingsMCPTools(BaseInstanaClient):
             return {"error": f"Failed to get application configuration: {e!s}"}
 
     @register_as_tool
-    @with_header_auth(ApplicationSettingsApi, allow_mock=True)
+    @with_header_auth(ApplicationSettingsApi)
     async def update_application_config(
         self,
         id: str,
-        access_rules: List[Dict[str, str]],
-        boundary_scope: str,
-        label: str,
-        scope: str,
-        tag_filter_expression: Optional[List[Dict[str, str]]] = None,
-        match_specification: Optional[List[Dict[str, Any]]] = None,
+        payload: Union[Dict[str, Any], str],
         ctx=None,
         api_client=None
     ) -> Dict[str, Any]:
@@ -255,55 +341,146 @@ class ApplicationSettingsMCPTools(BaseInstanaClient):
 
         Args:
             id: The ID of the application perspective to retrieve
-            access_rules: List of access rules for the application perspective
-            boundary_scope: Boundary scope for the application perspective
-            label: Label for the application perspective
-            scope: Scope of the application perspective
-            tag_filter_expression: Tag filter expression for the application perspective (Optional)
+            Sample payload: {
+        "accessRules": [
+            {
+            "accessType": "READ",
+            "relationType": "ROLE"
+            }
+        ],
+        "boundaryScope": "INBOUND",
+        "id": "CxJ55sRbQwqBIfw5DzpRmQ",
+        "label": "Discount Build 1",
+        "scope": "INCLUDE_NO_DOWNSTREAM",
+        "tagFilterExpression": {
+            "type": "EXPRESSION",
+            "logicalOperator": "AND",
+            "elements": [
+            {
+                "type": "TAG_FILTER",
+                "name": "kubernetes.label",
+                "stringValue": "stage=canary",
+                "numberValue": null,
+                "booleanValue": null,
+                "key": "stage",
+                "value": "canary",
+                "operator": "EQUALS",
+                "entity": "DESTINATION"
+            },
+            {
+                "type": "TAG_FILTER",
+                "name": "kubernetes.label",
+                "stringValue": "build=6987",
+                "numberValue": null,
+                "booleanValue": null,
+                "key": "build",
+                "value": "6987",
+                "operator": "EQUALS",
+                "entity": "DESTINATION"
+            },
+            {
+                "type": "TAG_FILTER",
+                "name": "kubernetes.label",
+                "stringValue": "app=discount",
+                "numberValue": null,
+                "booleanValue": null,
+                "key": "app",
+                "value": "discount",
+                "operator": "EQUALS",
+                "entity": "DESTINATION"
+            }
+            ]
+        }
+        }
             ctx: The MCP context (optional)
         Returns:
             Dictionary containing the created application perspective configuration or error information
         """
-
         try:
-            debug_print("Update existing application perspective configuration")
-            if not (access_rules or boundary_scope or label or scope or id):
-                return {"error": "Required enitities are missing or invalid"}
 
-            request_body = {
-                "access_rules": access_rules,
-                "boundary_scope": boundary_scope,
-                "id": id,
-                "label": label,
-                "match_specification": match_specification,
-                "scope": scope,
-                "tag_filter_expression": tag_filter_expression
-            }
-            # Create a ApplicationConfig instance with the provided parameters
-            application_config = ApplicationConfig(**request_body)
-            debug_print(f"Application Config: {application_config.to_dict()}")
+            if not payload or not id:
+                return {"error": "missing arguments"}
+
+            # Parse the payload if it's a string
+            if isinstance(payload, str):
+                logger.debug("Payload is a string, attempting to parse")
+                try:
+                    import json
+                    try:
+                        parsed_payload = json.loads(payload)
+                        logger.debug("Successfully parsed payload as JSON")
+                        request_body = parsed_payload
+                    except json.JSONDecodeError as e:
+                        logger.debug(f"JSON parsing failed: {e}, trying with quotes replaced")
+
+                        # Try replacing single quotes with double quotes
+                        fixed_payload = payload.replace("'", "\"")
+                        try:
+                            parsed_payload = json.loads(fixed_payload)
+                            logger.debug("Successfully parsed fixed JSON")
+                            request_body = parsed_payload
+                        except json.JSONDecodeError:
+                            # Try as Python literal
+                            import ast
+                            try:
+                                parsed_payload = ast.literal_eval(payload)
+                                logger.debug("Successfully parsed payload as Python literal")
+                                request_body = parsed_payload
+                            except (SyntaxError, ValueError) as e2:
+                                logger.debug(f"Failed to parse payload string: {e2}")
+                                return {"error": f"Invalid payload format: {e2}", "payload": payload}
+                except Exception as e:
+                    logger.debug(f"Error parsing payload string: {e}")
+                    return {"error": f"Failed to parse payload: {e}", "payload": payload}
+            else:
+                # If payload is already a dictionary, use it directly
+                logger.debug("Using provided payload dictionary")
+                request_body = payload
+
+            # Import the ApplicationConfig class
+            try:
+                from instana_client.models.application_config import (
+                    ApplicationConfig,
+                )
+                logger.debug("Successfully imported ApplicationConfig")
+            except ImportError as e:
+                logger.debug(f"Error importing ApplicationConfig: {e}")
+                return {"error": f"Failed to import ApplicationConfig: {e!s}"}
+
+            # Create an ApplicationConfig object from the request body
+            try:
+                logger.debug(f"Creating ApplicationConfig with params: {request_body}")
+                config_object = ApplicationConfig(**request_body)
+                logger.debug("Successfully updated application config object")
+            except Exception as e:
+                logger.debug(f"Error updating ApplicationConfig: {e}")
+                return {"error": f"Failed to update config object: {e!s}"}
 
             # Call the put_application_config method from the SDK
+            logger.debug("Calling put_application_config with config object")
             result = api_client.put_application_config(
                 id=id,
-                application_config=application_config
+                application_config=config_object
             )
 
             # Convert the result to a dictionary
             if hasattr(result, 'to_dict'):
                 result_dict = result.to_dict()
             else:
-                result_dict = result
+                # If it's already a dict or another format, use it as is
+                result_dict = result or {
+                    "success": True,
+                    "message": "Update existing application config"
+                }
 
-            debug_print(f"Result from put_application_config: {result_dict}")
+            logger.debug(f"Result from put_application_config: {result_dict}")
             return result_dict
         except Exception as e:
-            debug_print(f"Error in put_application_config: {e}")
-            traceback.print_exc(file=sys.stderr)
-            return {"error": f"Failed to update application configuration: {e!s}"}
+            logger.error(f"Error in put_application_config: {e}")
+            return {"error": f"Failed to update existing application config: {e!s}"}
 
     @register_as_tool
-    @with_header_auth(ApplicationSettingsApi, allow_mock=True)
+    @with_header_auth(ApplicationSettingsApi)
     async def get_all_endpoint_configs(self,
                              ctx=None,
                              api_client=None) -> List[Dict[str, Any]]:
@@ -335,66 +512,109 @@ class ApplicationSettingsMCPTools(BaseInstanaClient):
             return [{"error": f"Failed to get endpoint configs: {e!s}"}]
 
     @register_as_tool
-    @with_header_auth(ApplicationSettingsApi, allow_mock=True)
+    @with_header_auth(ApplicationSettingsApi)
     async def create_endpoint_config(
         self,
-        endpoint_case: str,
-        service_id: str,
-        endpoint_name_by_collected_path_template_rule_enabled: Optional[bool]= None,
-        endpoint_name_by_first_path_segment_rule_enabled: Optional[bool] = None,
-        rules: Optional[List[Dict[str, Any]]] = None,
+        payload: Union[Dict[str, Any], str],
         ctx=None,
         api_client=None
     ) -> Dict[str, Any]:
         """
         Create or update endpoint configuration for a service.
 
-        Args:
-            serviceId (str): Instana Service ID to configure.
-            endpointCase (str): Case format for endpoints. One of: 'ORIGINAL', 'LOWER', 'UPPER'.
-            endpointNameByCollectedPathTemplateRuleEnabled (Optional[bool]): Enable path template rule. (Optional)
-            endpointNameByFirstPathSegmentRuleEnabled (Optional[bool]): Enable first path segment rule. (Optional)
-            rules (Optional[List[Dict[str, Any]]]): Optional list of custom HTTP endpoint rules. (Optional)
-            ctx: The MCP context (optional)
+        Sample Payload: {
+        "serviceId": "d0cedae516f2182ede16f57f67476dd4c7dab9cd",
+        "endpointCase": "LOWER",
+        "endpointNameByFirstPathSegmentRuleEnabled": false,
+        "endpointNameByCollectedPathTemplateRuleEnabled": false,
+        "rules": null
+        }
 
         Returns:
             Dict[str, Any]: Response from the create/update endpoint configuration API.
         """
         try:
-            debug_print("Creating endpoint configs")
-            if not endpoint_case or not service_id:
-                return {"error": "Required enitities are missing or invalid"}
+            if not payload:
+                return {"error": "missing arguments"}
 
-            request_body = {
-                "endpoint_case": endpoint_case,
-                "endpoint_name_by_collected_path_template_rule_enabled": endpoint_name_by_collected_path_template_rule_enabled,
-                "endpoint_name_by_first_path_segment_rule_enabled": endpoint_name_by_first_path_segment_rule_enabled,
-                "rules": rules,
-                "serviceId": service_id
-            }
-            endpoint_config = EndpointConfig(**request_body)
+            # Parse the payload if it's a string
+            if isinstance(payload, str):
+                logger.debug("Payload is a string, attempting to parse")
+                try:
+                    import json
+                    try:
+                        parsed_payload = json.loads(payload)
+                        logger.debug("Successfully parsed payload as JSON")
+                        request_body = parsed_payload
+                    except json.JSONDecodeError as e:
+                        logger.debug(f"JSON parsing failed: {e}, trying with quotes replaced")
 
+                        # Try replacing single quotes with double quotes
+                        fixed_payload = payload.replace("'", "\"")
+                        try:
+                            parsed_payload = json.loads(fixed_payload)
+                            logger.debug("Successfully parsed fixed JSON")
+                            request_body = parsed_payload
+                        except json.JSONDecodeError:
+                            # Try as Python literal
+                            import ast
+                            try:
+                                parsed_payload = ast.literal_eval(payload)
+                                logger.debug("Successfully parsed payload as Python literal")
+                                request_body = parsed_payload
+                            except (SyntaxError, ValueError) as e2:
+                                logger.debug(f"Failed to parse payload string: {e2}")
+                                return {"error": f"Invalid payload format: {e2}", "payload": payload}
+                except Exception as e:
+                    logger.debug(f"Error parsing payload string: {e}")
+                    return {"error": f"Failed to parse payload: {e}", "payload": payload}
+            else:
+                # If payload is already a dictionary, use it directly
+                logger.debug("Using provided payload dictionary")
+                request_body = payload
+
+            # Import the EndpointConfig class
+            try:
+                from instana_client.models.endpoint_config import (
+                    EndpointConfig,
+                )
+                logger.debug("Successfully imported EndpointConfig")
+            except ImportError as e:
+                logger.debug(f"Error importing EndpointConfig: {e}")
+                return {"error": f"Failed to import EndpointConfig: {e!s}"}
+
+            # Create an EndpointConfig object from the request body
+            try:
+                logger.debug(f"Creating EndpointConfig with params: {request_body}")
+                config_object = EndpointConfig(**request_body)
+                logger.debug("Successfully created endpoint config object")
+            except Exception as e:
+                logger.debug(f"Error creating EndpointConfig: {e}")
+                return {"error": f"Failed to create config object: {e!s}"}
+
+            # Call the create_endpoint_config method from the SDK
+            logger.debug("Calling create_endpoint_config with config object")
             result = api_client.create_endpoint_config(
-                endpoint_config=endpoint_config
+                endpoint_config=config_object
             )
-
             # Convert the result to a dictionary
             if hasattr(result, 'to_dict'):
                 result_dict = result.to_dict()
             else:
                 # If it's already a dict or another format, use it as is
-                result_dict = result
+                result_dict = result or {
+                    "success": True,
+                    "message": "Create new endpoint config"
+                }
 
-            debug_print(f"Result from get_endpoint_configs: {result_dict}")
+            logger.debug(f"Result from create_endpoint_config: {result_dict}")
             return result_dict
-
         except Exception as e:
-            debug_print(f"Error in get_endpoint_configs: {e}")
-            traceback.print_exc(file=sys.stderr)
-            return {"error": f"Failed to get endpoint configs: {e!s}"}
+            logger.error(f"Error in create_endpoint_config: {e}")
+            return {"error": f"Failed to create new endpoint config: {e!s}"}
 
     @register_as_tool
-    @with_header_auth(ApplicationSettingsApi, allow_mock=True)
+    @with_header_auth(ApplicationSettingsApi)
     async def delete_endpoint_config(
         self,
         id: str,
@@ -432,7 +652,7 @@ class ApplicationSettingsMCPTools(BaseInstanaClient):
             return {"error": f"Failed to delete endpoint configs: {e!s}"}
 
     @register_as_tool
-    @with_header_auth(ApplicationSettingsApi, allow_mock=True)
+    @with_header_auth(ApplicationSettingsApi)
     async def get_endpoint_config(
         self,
         id: str,
@@ -472,15 +692,11 @@ class ApplicationSettingsMCPTools(BaseInstanaClient):
             return {"error": f"Failed to get endpoint configs: {e!s}"}
 
     @register_as_tool
-    @with_header_auth(ApplicationSettingsApi, allow_mock=True)
+    @with_header_auth(ApplicationSettingsApi)
     async def update_endpoint_config(
         self,
         id: str,
-        endpoint_case: str,
-        service_id: str,
-        endpoint_name_by_collected_path_template_rule_enabled: Optional[bool]= None,
-        endpoint_name_by_first_path_segment_rule_enabled: Optional[bool] = None,
-        rules: Optional[List[Dict[str, Any]]] = None,
+        payload: Union[Dict[str, Any], str],
         ctx=None,
         api_client=None
     ) -> Dict[str, Any]:
@@ -489,33 +705,99 @@ class ApplicationSettingsMCPTools(BaseInstanaClient):
 
         Args:
             id: An Instana generated unique identifier for a Service.
-            serviceId: Instana Service ID to configure.
-            endpointCase: Case format for endpoints. One of: 'ORIGINAL', 'LOWER', 'UPPER'.
-            endpointNameByCollectedPathTemplateRuleEnabled: Enable path template rule. (Optional)
-            endpointNameByFirstPathSegmentRuleEnabled: Enable first path segment rule. (Optional)
-            rules: Optional list of custom HTTP endpoint rules. (Optional)
+            {
+            "serviceId": "20ba31821b079e7d845a08096124880db3eeeb40",
+            "endpointNameByCollectedPathTemplateRuleEnabled": true,
+            "endpointNameByFirstPathSegmentRuleEnabled": true,
+            "rules": [
+                {
+                "enabled": true,
+                "pathSegments": [
+                    {
+                    "name": "api",
+                    "type": "FIXED"
+                    },
+                    {
+                    "name": "version",
+                    "type": "PARAMETER"
+                    }
+                ],
+                "testCases": [
+                    "/api/v2/users"
+                ]
+                }
+            ],
+            "endpointCase": "UPPER"
+            }
             ctx: The MCP context (optional)
 
         Returns:
             Dict[str, Any]: Response from the create/update endpoint configuration API.
         """
         try:
-            debug_print("Updating endpoint configs")
-            if not endpoint_case or not service_id:
-                return {"error": "Required enitities are missing or invalid"}
+            if not payload or not id:
+                return {"error": "missing arguments"}
 
-            request_body = {
-                "endpoint_case": endpoint_case,
-                "endpoint_name_by_collected_path_template_rule_enabled": endpoint_name_by_collected_path_template_rule_enabled,
-                "endpoint_name_by_first_path_segment_rule_enabled": endpoint_name_by_first_path_segment_rule_enabled,
-                "rules": rules,
-                "serviceId": service_id
-            }
-            endpoint_config = EndpointConfig(**request_body)
+            # Parse the payload if it's a string
+            if isinstance(payload, str):
+                logger.debug("Payload is a string, attempting to parse")
+                try:
+                    import json
+                    try:
+                        parsed_payload = json.loads(payload)
+                        logger.debug("Successfully parsed payload as JSON")
+                        request_body = parsed_payload
+                    except json.JSONDecodeError as e:
+                        logger.debug(f"JSON parsing failed: {e}, trying with quotes replaced")
 
+                        # Try replacing single quotes with double quotes
+                        fixed_payload = payload.replace("'", "\"")
+                        try:
+                            parsed_payload = json.loads(fixed_payload)
+                            logger.debug("Successfully parsed fixed JSON")
+                            request_body = parsed_payload
+                        except json.JSONDecodeError:
+                            # Try as Python literal
+                            import ast
+                            try:
+                                parsed_payload = ast.literal_eval(payload)
+                                logger.debug("Successfully parsed payload as Python literal")
+                                request_body = parsed_payload
+                            except (SyntaxError, ValueError) as e2:
+                                logger.debug(f"Failed to parse payload string: {e2}")
+                                return {"error": f"Invalid payload format: {e2}", "payload": payload}
+                except Exception as e:
+                    logger.debug(f"Error parsing payload string: {e}")
+                    return {"error": f"Failed to parse payload: {e}", "payload": payload}
+            else:
+                # If payload is already a dictionary, use it directly
+                logger.debug("Using provided payload dictionary")
+                request_body = payload
+
+            # Import the EndpointConfig class
+            try:
+                from instana_client.models.endpoint_config import (
+                    EndpointConfig,
+                )
+                logger.debug("Successfully imported EndpointConfig")
+            except ImportError as e:
+                logger.debug(f"Error importing EndpointConfig: {e}")
+                return {"error": f"Failed to import EndpointConfig: {e!s}"}
+
+            # Create an EndpointConfig object from the request body
+            try:
+                logger.debug(f"Creating EndpointConfig with params: {request_body}")
+                config_object = EndpointConfig(**request_body)
+                logger.debug("Successfully updated endpoint config object")
+            except Exception as e:
+                logger.debug(f"Error updating EndpointConfig: {e}")
+                return {"error": f"Failed to update config object: {e!s}"}
+
+            # Call the update_endpoint_config method from the SDK
+            logger.debug("Calling update_endpoint_config with config object")
             result = api_client.update_endpoint_config(
                 id=id,
-                endpoint_config=endpoint_config
+                endpoint_config=config_object
             )
 
             # Convert the result to a dictionary
@@ -523,18 +805,20 @@ class ApplicationSettingsMCPTools(BaseInstanaClient):
                 result_dict = result.to_dict()
             else:
                 # If it's already a dict or another format, use it as is
-                result_dict = result
+                result_dict = result or {
+                    "success": True,
+                    "message": "update existing endpoint config"
+                }
 
-            debug_print(f"Result from get_endpoint_configs: {result_dict}")
+            logger.debug(f"Result from update_endpoint_config: {result_dict}")
             return result_dict
-
         except Exception as e:
-            debug_print(f"Error in get_endpoint_configs: {e}")
-            traceback.print_exc(file=sys.stderr)
-            return {"error": f"Failed to get endpoint configs: {e!s}"}
+            logger.error(f"Error in update_endpoint_config: {e}")
+            return {"error": f"Failed to update existing application config: {e!s}"}
+
 
     @register_as_tool
-    @with_header_auth(ApplicationSettingsApi, allow_mock=True)
+    @with_header_auth(ApplicationSettingsApi)
     async def get_all_manual_service_configs(self,
                              ctx=None,
                              api_client=None) -> List[Dict[str, Any]]:
@@ -566,14 +850,10 @@ class ApplicationSettingsMCPTools(BaseInstanaClient):
             return [{"error": f"Failed to get manual service configs: {e!s}"}]
 
     @register_as_tool
-    @with_header_auth(ApplicationSettingsApi, allow_mock=True)
+    @with_header_auth(ApplicationSettingsApi)
     async def add_manual_service_config(
         self,
-        tagFilterExpression: Dict[str, Any],
-        unmonitoredServiceName: Optional[str] = None,
-        existingServiceId: Optional[str] = None,
-        description: Optional[str] = None,
-        enabled: Optional[bool] = True,
+        payload: Union[Dict[str, Any], str],
         ctx=None,
         api_client=None
     ) -> Dict[str, Any]:
@@ -582,62 +862,112 @@ class ApplicationSettingsMCPTools(BaseInstanaClient):
 
         Requires `CanConfigureServiceMapping` permission on the API token.
 
-        Args:
-            tagFilterExpression : Boolean expression of tag filters to match relevant calls.
-            unmonitoredServiceName : Custom name for an unmonitored service to map. (Optional)
-            existingServiceId : Service ID to link the matched calls to. (Optional)
-            description : Description of the mapping configuration. (Optional)
-            enabled : Enable or disable the configuration. Defaults to True. (Optional)
+        Sample payload:
+        {
+        "description": "Map source service example",
+        "enabled": true,
+        "existingServiceId": "c467ca0fa21477fee3cde75a140b2963307388a7",
+        "tagFilterExpression": {
+            "type": "TAG_FILTER",
+            "name": "service.name",
+            "stringValue": "front",
+            "numberValue": null,
+            "booleanValue": null,
+            "key": null,
+            "value": "front",
+            "operator": "EQUALS",
+            "entity": "SOURCE"
+        },
+        "unmonitoredServiceName": null
+        }
             ctx: Optional execution context.
 
         Returns:
             Dict[str, Any]: API response indicating success or failure.
         """
         try:
-            debug_print("Creating manual service configuration")
+            if not payload:
+                return {"error": "missing arguments"}
 
-            if not (unmonitoredServiceName and existingServiceId):
-                return {
-                    "error": "You must provide either 'unmonitoredServiceName' or 'existingServiceId'."
-                }
+            # Parse the payload if it's a string
+            if isinstance(payload, str):
+                logger.debug("Payload is a string, attempting to parse")
+                try:
+                    import json
+                    try:
+                        parsed_payload = json.loads(payload)
+                        logger.debug("Successfully parsed payload as JSON")
+                        request_body = parsed_payload
+                    except json.JSONDecodeError as e:
+                        logger.debug(f"JSON parsing failed: {e}, trying with quotes replaced")
 
-            if not tagFilterExpression:
-                return {"error": "Required enitities are missing or invalid"}
+                        # Try replacing single quotes with double quotes
+                        fixed_payload = payload.replace("'", "\"")
+                        try:
+                            parsed_payload = json.loads(fixed_payload)
+                            logger.debug("Successfully parsed fixed JSON")
+                            request_body = parsed_payload
+                        except json.JSONDecodeError:
+                            # Try as Python literal
+                            import ast
+                            try:
+                                parsed_payload = ast.literal_eval(payload)
+                                logger.debug("Successfully parsed payload as Python literal")
+                                request_body = parsed_payload
+                            except (SyntaxError, ValueError) as e2:
+                                logger.debug(f"Failed to parse payload string: {e2}")
+                                return {"error": f"Invalid payload format: {e2}", "payload": payload}
+                except Exception as e:
+                    logger.debug(f"Error parsing payload string: {e}")
+                    return {"error": f"Failed to parse payload: {e}", "payload": payload}
+            else:
+                # If payload is already a dictionary, use it directly
+                logger.debug("Using provided payload dictionary")
+                request_body = payload
 
+            # Import the NewManualServiceConfig class
+            try:
+                from instana_client.models.new_manual_service_config import (
+                    NewManualServiceConfig,
+                )
+                logger.debug("Successfully imported NewManualServiceConfig")
+            except ImportError as e:
+                logger.debug(f"Error importing NewManualServiceConfig: {e}")
+                return {"error": f"Failed to import NewManualServiceConfig: {e!s}"}
 
-            body = {
-                "tagFilterExpression": tagFilterExpression,
-                "enabled": enabled
-            }
+            # Create an NewManualServiceConfig object from the request body
+            try:
+                logger.debug(f"Creating NewManualServiceConfig with params: {request_body}")
+                config_object = NewManualServiceConfig(**request_body)
+                logger.debug("Successfully created manual service config object")
+            except Exception as e:
+                logger.debug(f"Error creating NewManualServiceConfig: {e}")
+                return {"error": f"Failed to create config object: {e!s}"}
 
-            if unmonitoredServiceName:
-                body["unmonitoredServiceName"] = unmonitoredServiceName
-            if existingServiceId:
-                body["existingServiceId"] = existingServiceId
-            if description:
-                body["description"] = description
-
-            new_manual_service_config = NewManualServiceConfig(**body)
-
+            # Call the add_manual_service_config method from the SDK
+            logger.debug("Calling add_manual_service_config with config object")
             result = api_client.add_manual_service_config(
-                new_manual_service_config=new_manual_service_config
+                new_manual_service_config=config_object
             )
 
-            if hasattr(result, "to_dict"):
+            # Convert the result to a dictionary
+            if hasattr(result, 'to_dict'):
                 result_dict = result.to_dict()
             else:
-                result_dict = result
+                # If it's already a dict or another format, use it as is
+                result_dict = result or {
+                    "success": True,
+                    "message": "Create new manual service config"
+                }
 
-            debug_print(f"Manual service configuration result: {result_dict}")
+            logger.debug(f"Result from add_manual_service_config: {result_dict}")
             return result_dict
-
         except Exception as e:
-            debug_print(f"Error creating manual service configuration: {e}")
-            traceback.print_exc(file=sys.stderr)
-            return {"error": f"Failed to create manual service configuration: {e!s}"}
+            logger.error(f"Error in add_manual_service_config: {e}")
+            return {"error": f"Failed to create new manual service config: {e!s}"}
 
     @register_as_tool
-    @with_header_auth(ApplicationSettingsApi, allow_mock=True)
+    @with_header_auth(ApplicationSettingsApi)
     async def delete_manual_service_config(
         self,
         id: str,
@@ -675,15 +1005,11 @@ class ApplicationSettingsMCPTools(BaseInstanaClient):
             return {"error": f"Failed to delete manual service configs: {e!s}"}
 
     @register_as_tool
-    @with_header_auth(ApplicationSettingsApi, allow_mock=True)
+    @with_header_auth(ApplicationSettingsApi)
     async def update_manual_service_config(
         self,
         id: str,
-        tagFilterExpression: Dict[str, Any],
-        unmonitoredServiceName: Optional[str] = None,
-        existingServiceId: Optional[str] = None,
-        description: Optional[str] = None,
-        enabled: Optional[bool] = True,
+        payload: Union[Dict[str, Any], str],
         ctx=None,
         api_client=None
     ) -> Dict[str, Any]:
@@ -696,69 +1022,117 @@ class ApplicationSettingsMCPTools(BaseInstanaClient):
         Link Calls to an Existing Monitored Service. For example, Link database calls (jdbc:mysql://10.128.0.1:3306) to an existing service like MySQL@3306 on demo-host by referencing its service ID.
 
         Args:
-            id: A unique id of the manual service configuration.
-            tagFilterExpression : Boolean expression of tag filters to match relevant calls.
-            unmonitoredServiceName : Custom name for an unmonitored service to map. (Optional)
-            existingServiceId : Service ID to link the matched calls to. (Optional)
-            description: Description of the mapping configuration. (Optional)
-            enabled: Enable or disable the configuration. Defaults to True. (Optional)
-            ctx: Optional execution context.
+        id: A unique id of the manual service configuration.
+        Sample payload: {
+        "description": "Map source service example",
+        "enabled": true,
+        "existingServiceId": "c467ca0fa21477fee3cde75a140b2963307388a7",
+        "id": "BDGeDcG4TRSzRkJ1mGOk-Q",
+        "tagFilterExpression": {
+            "type": "TAG_FILTER",
+            "name": "service.name",
+            "stringValue": "front",
+            "numberValue": null,
+            "booleanValue": null,
+            "key": null,
+            "value": "front",
+            "operator": "EQUALS",
+            "entity": "SOURCE"
+        },
+        "unmonitoredServiceName": null
+        }
 
         Returns:
             Dict[str, Any]: API response indicating success or failure.
         """
         try:
-            debug_print("Creating manual service configuration")
+            if not payload or not id:
+                return {"error": "missing arguments"}
 
-            if not (unmonitoredServiceName and existingServiceId):
-                return {
-                    "error": "You must provide either 'unmonitoredServiceName' or 'existingServiceId'."
-                }
-            if not id or not tagFilterExpression:
-                return {"error": "Required enitities are missing or invalid"}
+            # Parse the payload if it's a string
+            if isinstance(payload, str):
+                logger.debug("Payload is a string, attempting to parse")
+                try:
+                    import json
+                    try:
+                        parsed_payload = json.loads(payload)
+                        logger.debug("Successfully parsed payload as JSON")
+                        request_body = parsed_payload
+                    except json.JSONDecodeError as e:
+                        logger.debug(f"JSON parsing failed: {e}, trying with quotes replaced")
 
-            body = {
-                "tagFilterExpression": tagFilterExpression,
-                "id": id
-            }
+                        # Try replacing single quotes with double quotes
+                        fixed_payload = payload.replace("'", "\"")
+                        try:
+                            parsed_payload = json.loads(fixed_payload)
+                            logger.debug("Successfully parsed fixed JSON")
+                            request_body = parsed_payload
+                        except json.JSONDecodeError:
+                            # Try as Python literal
+                            import ast
+                            try:
+                                parsed_payload = ast.literal_eval(payload)
+                                logger.debug("Successfully parsed payload as Python literal")
+                                request_body = parsed_payload
+                            except (SyntaxError, ValueError) as e2:
+                                logger.debug(f"Failed to parse payload string: {e2}")
+                                return {"error": f"Invalid payload format: {e2}", "payload": payload}
+                except Exception as e:
+                    logger.debug(f"Error parsing payload string: {e}")
+                    return {"error": f"Failed to parse payload: {e}", "payload": payload}
+            else:
+                # If payload is already a dictionary, use it directly
+                logger.debug("Using provided payload dictionary")
+                request_body = payload
 
-            if unmonitoredServiceName:
-                body["unmonitoredServiceName"] = unmonitoredServiceName
-            if existingServiceId:
-                body["existingServiceId"] = existingServiceId
-            if description:
-                body["description"] = description
+            # Import the ManualServiceConfig class
+            try:
+                from instana_client.models.manual_service_config import (
+                    ManualServiceConfig,
+                )
+                logger.debug("Successfully imported ManualServiceConfig")
+            except ImportError as e:
+                logger.debug(f"Error importing ManualServiceConfig: {e}")
+                return {"error": f"Failed to import ManualServiceConfig: {e!s}"}
 
-            manual_service_config = ManualServiceConfig(**body)
+            # Create an ManualServiceConfig object from the request body
+            try:
+                logger.debug(f"Creating ManualServiceConfig with params: {request_body}")
+                config_object = ManualServiceConfig(**request_body)
+                logger.debug("Successfully update manual service config object")
+            except Exception as e:
+                logger.debug(f"Error creating ManualServiceConfig: {e}")
+                return {"error": f"Failed to update manual config object: {e!s}"}
 
+            # Call the update_manual_service_config method from the SDK
+            logger.debug("Calling update_manual_service_config with config object")
             result = api_client.update_manual_service_config(
                 id=id,
-                manual_service_config=manual_service_config
+                manual_service_config=config_object
             )
 
-            if hasattr(result, "to_dict"):
+            # Convert the result to a dictionary
+            if hasattr(result, 'to_dict'):
                 result_dict = result.to_dict()
             else:
-                result_dict = result
+                # If it's already a dict or another format, use it as is
+                result_dict = result or {
+                    "success": True,
+                    "message": "update manual service config"
+                }
 
-            debug_print(f"Manual service configuration result: {result_dict}")
+            logger.debug(f"Result from update_manual_service_config: {result_dict}")
             return result_dict
-
         except Exception as e:
-            debug_print(f"Error creating manual service configuration: {e}")
-            traceback.print_exc(file=sys.stderr)
-            return {"error": f"Failed to create manual service configuration: {e!s}"}
+            logger.error(f"Error in update_manual_service_config: {e}")
+            return {"error": f"Failed to update manual config: {e!s}"}
 
 
     @register_as_tool
-    @with_header_auth(ApplicationSettingsApi, allow_mock=True)
+    @with_header_auth(ApplicationSettingsApi)
     async def replace_all_manual_service_config(
         self,
-        tagFilterExpression: Dict[str, Any],
-        unmonitoredServiceName: Optional[str] = None,
-        existingServiceId: Optional[str] = None,
-        description: Optional[str] = None,
-        enabled: Optional[bool] = True,
+        payload: Union[Dict[str, Any], str],
         ctx=None,
         api_client=None
     ) -> Dict[str, Any]:
@@ -771,60 +1145,113 @@ class ApplicationSettingsMCPTools(BaseInstanaClient):
         Link Calls to an Existing Monitored Service. For example, Link database calls (jdbc:mysql://10.128.0.1:3306) to an existing service like MySQL@3306 on demo-host by referencing its service ID.
 
         Args:
-            id: A unique id of the manual service configuration.
-            tagFilterExpression : Boolean expression of tag filters to match relevant calls.
-            unmonitoredServiceName : Custom name for an unmonitored service to map. (Optional)
-            existingServiceId : Service ID to link the matched calls to. (Optional)
-            description: Description of the mapping configuration. (Optional)
-            enabled: Enable or disable the configuration. Defaults to True. (Optional)
+            Sample payload: [
+            {
+                "description": "Map source service",
+                "enabled": true,
+                "existingServiceId": "c467ca0fa21477fee3cde75a140b2963307388a7",
+                "tagFilterExpression": {
+                "type": "TAG_FILTER",
+                "name": "service.name",
+                "stringValue": "front",
+                "numberValue": null,
+                "booleanValue": null,
+                "key": null,
+                "value": "front",
+                "operator": "EQUALS",
+                "entity": "SOURCE"
+                },
+                "unmonitoredServiceName": null
+            }
+            ]
             ctx: Optional execution context.
 
         Returns:
             Dict[str, Any]: API response indicating success or failure.
         """
         try:
-            debug_print("Creating manual service configuration")
+            if not payload:
+                return {"error": "missing arguments"}
 
-            if not (unmonitoredServiceName and existingServiceId):
-                return {
-                    "error": "You must provide either 'unmonitoredServiceName' or 'existingServiceId'."
-                }
-            if not tagFilterExpression:
-                return {"error": "Required enitities are missing or invalid"}
+            # Parse the payload if it's a string
+            if isinstance(payload, str):
+                logger.debug("Payload is a string, attempting to parse")
+                try:
+                    import json
+                    try:
+                        parsed_payload = json.loads(payload)
+                        logger.debug("Successfully parsed payload as JSON")
+                        request_body = parsed_payload
+                    except json.JSONDecodeError as e:
+                        logger.debug(f"JSON parsing failed: {e}, trying with quotes replaced")
 
-            request_body = {}
+                        # Try replacing single quotes with double quotes
+                        fixed_payload = payload.replace("'", "\"")
+                        try:
+                            parsed_payload = json.loads(fixed_payload)
+                            logger.debug("Successfully parsed fixed JSON")
+                            request_body = parsed_payload
+                        except json.JSONDecodeError:
+                            # Try as Python literal
+                            import ast
+                            try:
+                                parsed_payload = ast.literal_eval(payload)
+                                logger.debug("Successfully parsed payload as Python literal")
+                                request_body = parsed_payload
+                            except (SyntaxError, ValueError) as e2:
+                                logger.debug(f"Failed to parse payload string: {e2}")
+                                return {"error": f"Invalid payload format: {e2}", "payload": payload}
+                except Exception as e:
+                    logger.debug(f"Error parsing payload string: {e}")
+                    return {"error": f"Failed to parse payload: {e}", "payload": payload}
+            else:
+                # If payload is already a dictionary, use it directly
+                logger.debug("Using provided payload dictionary")
+                request_body = payload
 
-            if tagFilterExpression:
-                request_body["tagFilterExpression"] = tagFilterExpression
-            if unmonitoredServiceName:
-                request_body["unmonitoredServiceName"] = unmonitoredServiceName
-            if existingServiceId:
-                request_body["existingServiceId"] = existingServiceId
-            if description:
-                request_body["description"] = description
+            # Import the NewManualServiceConfig class
+            try:
+                from instana_client.models.new_manual_service_config import (
+                    NewManualServiceConfig,
+                )
+                logger.debug("Successfully imported ManualServiceConfig")
+            except ImportError as e:
+                logger.debug(f"Error importing ManualServiceConfig: {e}")
+                return {"error": f"Failed to import ManualServiceConfig: {e!s}"}
 
-            new_manual_service_config = NewManualServiceConfig(**request_body)
+            # Create an ManualServiceConfig object from the request body
+            try:
+                logger.debug(f"Creating ManualServiceConfig with params: {request_body}")
+                config_object = [NewManualServiceConfig(**request_body)]
+                logger.debug("Successfully replace all manual service config object")
+            except Exception as e:
+                logger.debug(f"Error creating ManualServiceConfig: {e}")
+                return {"error": f"Failed to replace all manual config object: {e!s}"}
 
-            result = api_client.replace_all_manual_service_configs(
-                new_manual_service_config=new_manual_service_config
+            # Call the replace_all_manual_service_config method from the SDK
+            logger.debug("Calling replace_all_manual_service_config with config object")
+            result = api_client.replace_all_manual_service_config(
+                new_manual_service_config=config_object
             )
 
-            if hasattr(result, "to_dict"):
+            # Convert the result to a dictionary
+            if hasattr(result, 'to_dict'):
                 result_dict = result.to_dict()
             else:
-                result_dict = result
+                # If it's already a dict or another format, use it as is
+                result_dict = result or {
+                    "success": True,
+                    "message": "Create replace all manual service config"
+                }
 
-            debug_print(f"Manual service configuration result: {result_dict}")
+            logger.debug(f"Result from replace_all_manual_service_config: {result_dict}")
             return result_dict
-
         except Exception as e:
-            debug_print(f"Error creating manual service configuration: {e}")
-            traceback.print_exc(file=sys.stderr)
-            return {"error": f"Failed to create manual service configuration: {e!s}"}
-
+            logger.error(f"Error in replace_all_manual_service_config: {e}")
+            return {"error": f"Failed to replace all manual config: {e!s}"}
 
     @register_as_tool
-    @with_header_auth(ApplicationSettingsApi, allow_mock=True)
+    @with_header_auth(ApplicationSettingsApi)
     async def get_all_service_configs(self,
                              ctx=None,
                              api_client=None) -> List[Dict[str, Any]]:
@@ -856,7 +1283,7 @@ class ApplicationSettingsMCPTools(BaseInstanaClient):
             return [{"error": f"Failed to get application data metrics: {e}"}]
 
     @register_as_tool
-    @with_header_auth(ApplicationSettingsApi, allow_mock=True)
+    @with_header_auth(ApplicationSettingsApi)
     async def add_service_configs(self,
                             enabled: bool,
                             match_specification: List[Dict[str, str]],
@@ -865,37 +1292,70 @@ class ApplicationSettingsMCPTools(BaseInstanaClient):
                             id: str,
                             comment: Optional[str] = None,
                             ctx=None,
-                            api_client=None) -> List[Dict[str, Any]]:
+                            api_client=None) -> Dict[str, Any]:
         """
         This tool gives is used to add new Service Perspectives Configuration
         Get a list of all Service Perspectives with their configuration settings.
         Args:
-
+        {
+        "comment": null,
+        "enabled": true,
+        "label": "{gce.zone}-{jvm.args.abc}",
+        "matchSpecification": [
+            {
+            "key": "gce.zone",
+            "value": ".*"
+            },
+            {
+            "key": "jvm.args.abc",
+            "value": ".*"
+            }
+        ],
+        "name": "ABC is good"
+        }
             ctx: The MCP context (optional)
 
         Returns:
             Dictionary containing endpoints data or error information
         """
         try:
-            debug_print("Adding new service config")
-            if not (enabled and match_specification and name and label and id):
-                return [{"error": "Required entities are missing or invalid"}]
+            if not enabled or not match_specification or not name or not label or not id:
+                return {"error": "missing arguments"}
 
-            body = {
-                "match_specification": match_specification,
+            # Create request body from individual parameters
+            request_body = {
                 "enabled": enabled,
-                "id": id,
+                "matchSpecification": match_specification,
+                "name": name,
                 "label": label,
-                "name": name
+                "id": id
             }
-
             if comment:
-                body["comment"] = comment
+                request_body["comment"] = comment
 
-            service_config = ServiceConfig(**body)
+            # Import the ServiceConfig class
+            try:
+                from instana_client.models.service_config import (
+                    ServiceConfig,
+                )
+                logger.debug("Successfully imported ServiceConfig")
+            except ImportError as e:
+                logger.debug(f"Error importing ServiceConfig: {e}")
+                return {"error": f"Failed to import ServiceConfig: {e!s}"}
 
+            # Create an ServiceConfig object from the request body
+            try:
+                logger.debug(f"Creating ServiceConfig with params: {request_body}")
+                config_object = ServiceConfig(**request_body)
+                logger.debug("Successfully add service config object")
+            except Exception as e:
+                logger.debug(f"Error creating ServiceConfig: {e}")
+                return {"error": f"Failed to add service config object: {e!s}"}
+
+            # Call the ServiceConfig method from the SDK
+            logger.debug("Calling add_service_config with config object")
             result = api_client.add_service_config(
-                service_config=service_config
+                service_config=config_object
             )
 
             # Convert the result to a dictionary
@@ -903,74 +1363,126 @@ class ApplicationSettingsMCPTools(BaseInstanaClient):
                 result_dict = result.to_dict()
             else:
                 # If it's already a dict or another format, use it as is
-                result_dict = result
+                result_dict = result or {
+                    "success": True,
+                    "message": "Create service config"
+                }
 
-            debug_print(f"Result from add_service_config: {result_dict}")
+            logger.debug(f"Result from add_service_config: {result_dict}")
             return result_dict
-
         except Exception as e:
-            debug_print(f"Error in add_service_config: {e}")
-            traceback.print_exc(file=sys.stderr)
-            return [{"error": f"Failed to get application data metrics: {e}"}]
+            logger.error(f"Error in add_service_config: {e}")
+            return {"error": f"Failed to add service config: {e!s}"}
 
     @register_as_tool
-    @with_header_auth(ApplicationSettingsApi, allow_mock=True)
+    @with_header_auth(ApplicationSettingsApi)
     async def replace_all_service_configs(self,
-                            enabled: bool,
-                            match_specification: List[Dict[str, str]],
-                            name: str,
-                            label:str,
-                            id: str,
-                            comment: Optional[str] = None,
+                            payload: Union[Dict[str, Any], str],
                             ctx=None,
                             api_client=None) -> List[Dict[str, Any]]:
         """
-
         Args:
-
+            [
+            {
+                "comment": null,
+                "enabled": true,
+                "id": "8C-jGYx8Rsue854tzkh8KQ",
+                "label": "{docker.container.name}",
+                "matchSpecification": [
+                {
+                    "key": "docker.container.name",
+                    "value": ".*"
+                }
+                ],
+                "name": "Rule"
+            }
+            ]
             ctx: The MCP context (optional)
 
         Returns:
             Dictionary containing endpoints data or error information
         """
         try:
-            debug_print("Fetching all service configs")
-            if not (enabled or match_specification or name or label or id):
-                return [{"error": "Required entities are missing or invalid"}]
+            if not payload:
+                return [{"error": "missing arguments"}]
 
-            body = {
-                "match_specification": match_specification,
-                "enabled": enabled,
-                "id": id,
-                "label": label,
-                "name": name
-            }
+            # Parse the payload if it's a string
+            if isinstance(payload, str):
+                logger.debug("Payload is a string, attempting to parse")
+                try:
+                    import json
+                    try:
+                        parsed_payload = json.loads(payload)
+                        logger.debug("Successfully parsed payload as JSON")
+                        request_body = parsed_payload
+                    except json.JSONDecodeError as e:
+                        logger.debug(f"JSON parsing failed: {e}, trying with quotes replaced")
 
-            if comment:
-                body["comment"] = comment
+                        # Try replacing single quotes with double quotes
+                        fixed_payload = payload.replace("'", "\"")
+                        try:
+                            parsed_payload = json.loads(fixed_payload)
+                            logger.debug("Successfully parsed fixed JSON")
+                            request_body = parsed_payload
+                        except json.JSONDecodeError:
+                            # Try as Python literal
+                            import ast
+                            try:
+                                parsed_payload = ast.literal_eval(payload)
+                                logger.debug("Successfully parsed payload as Python literal")
+                                request_body = parsed_payload
+                            except (SyntaxError, ValueError) as e2:
+                                logger.debug(f"Failed to parse payload string: {e2}")
+                                return [{"error": f"Invalid payload format: {e2}", "payload": payload}]
+                except Exception as e:
+                    logger.debug(f"Error parsing payload string: {e}")
+                    return [{"error": f"Failed to parse payload: {e}", "payload": payload}]
+            else:
+                # If payload is already a dictionary, use it directly
+                logger.debug("Using provided payload dictionary")
+                request_body = payload
 
-            service_config_list = [ServiceConfig(**body)]
+            # Import the ServiceConfig class
+            try:
+                from instana_client.models.service_config import (
+                    ServiceConfig,
+                )
+                logger.debug("Successfully imported ServiceConfig")
+            except ImportError as e:
+                logger.debug(f"Error importing ServiceConfig: {e}")
+                return [{"error": f"Failed to import ServiceConfig: {e!s}"}]
 
+            # Create an ServiceConfig object from the request body
+            try:
+                logger.debug(f"Creating ServiceConfig with params: {request_body}")
+                config_object = [ServiceConfig(**request_body)]
+                logger.debug("Successfully replace all manual service config object")
+            except Exception as e:
+                logger.debug(f"Error creating ServiceConfig: {e}")
+                return [{"error": f"Failed to replace all manual config object: {e!s}"}]
+
+            # Call the replace_all method from the SDK
+            logger.debug("Calling replace_all with config object")
             result = api_client.replace_all(
-                service_config=service_config_list
+                service_config=config_object
             )
 
-            # Convert the result to a dictionary
+            # Convert the result to a list of dictionaries
             if hasattr(result, 'to_dict'):
-                result_dict = result.to_dict()
+                result_list = result.to_dict()
             else:
-                # If it's already a dict or another format, use it as is
-                result_dict = result
+                # If it's already a list or another format, use it as is
+                result_list = result or []
 
-            debug_print(f"Result from get_service_configs: {result_dict}")
-            return result_dict
-
+            logger.debug(f"Result from replace_all: {result_list}")
+            return result_list
         except Exception as e:
-            debug_print(f"Error in get_service_configs: {e}")
-            traceback.print_exc(file=sys.stderr)
-            return [{"error": f"Failed to get application data metrics: {e}"}]
+            logger.error(f"Error in replace_all: {e}")
+            return [{"error": f"Failed to replace all service config: {e!s}"}]
+
+
     @register_as_tool
-    @with_header_auth(ApplicationSettingsApi, allow_mock=True)
+    @with_header_auth(ApplicationSettingsApi)
     async def order_service_config(self,
                                    request_body: List[str],
                                    ctx=None,
@@ -1009,7 +1521,7 @@ class ApplicationSettingsMCPTools(BaseInstanaClient):
             return {"error": f"Failed to order service configs: {e!s}"}
 
     @register_as_tool
-    @with_header_auth(ApplicationSettingsApi, allow_mock=True)
+    @with_header_auth(ApplicationSettingsApi)
     async def delete_service_config(self,
                                 id: str,
                                 ctx=None,
@@ -1047,7 +1559,7 @@ class ApplicationSettingsMCPTools(BaseInstanaClient):
             return {"error": f"Failed to delete service configuration: {e!s}"}
 
     @register_as_tool
-    @with_header_auth(ApplicationSettingsApi, allow_mock=True)
+    @with_header_auth(ApplicationSettingsApi)
     async def get_service_config(
         self,
         id: str,
@@ -1087,46 +1599,105 @@ class ApplicationSettingsMCPTools(BaseInstanaClient):
             return {"error": f"Failed to get service config: {e!s}"}
 
     @register_as_tool
-    @with_header_auth(ApplicationSettingsApi, allow_mock=True)
+    @with_header_auth(ApplicationSettingsApi)
     async def update_service_configs(self,
                             enabled: bool,
                             match_specification: List[Dict[str, str]],
                             name: str,
                             label:str,
                             id: str,
-                            comment: Optional[str] = None,
+                            payload: Union[Dict[str, Any], str],
                             ctx=None,
-                            api_client=None) -> List[Dict[str, Any]]:
+                            api_client=None) -> Dict[str, Any]:
         """
         This tool gives is used if one wants to update a particular custom service rule.
         Args:
-
+        {
+        "comment": null,
+        "enabled": true,
+        "id": "9uma4MhnTTSyBzwu_FKBJA",
+        "label": "{gce.zone}-{jvm.args.abc}",
+        "matchSpecification": [
+            {
+            "key": "gce.zone",
+            "value": ".*"
+            },
+            {
+            "key": "jvm.args.abc",
+            "value": ".*"
+            }
+        ],
+        "name": "DEF is good"
+        }
             ctx: The MCP context (optional)
 
         Returns:
             Dictionary containing endpoints data or error information
         """
         try:
-            debug_print("Adding new service config")
-            if not (id and name and label and isinstance(match_specification, list)):
-                return [{"error": "Required entities are missing or invalid"}]
+            if not payload or not id:
+                return {"error": "missing arguments"}
 
-            body = {
-                "match_specification": match_specification,
-                "enabled": enabled,
-                "id": id,
-                "label": label,
-                "name": name
-            }
+            # Parse the payload if it's a string
+            if isinstance(payload, str):
+                logger.debug("Payload is a string, attempting to parse")
+                try:
+                    import json
+                    try:
+                        parsed_payload = json.loads(payload)
+                        logger.debug("Successfully parsed payload as JSON")
+                        request_body = parsed_payload
+                    except json.JSONDecodeError as e:
+                        logger.debug(f"JSON parsing failed: {e}, trying with quotes replaced")
 
-            if comment:
-                body["comment"] = comment
+                        # Try replacing single quotes with double quotes
+                        fixed_payload = payload.replace("'", "\"")
+                        try:
+                            parsed_payload = json.loads(fixed_payload)
+                            logger.debug("Successfully parsed fixed JSON")
+                            request_body = parsed_payload
+                        except json.JSONDecodeError:
+                            # Try as Python literal
+                            import ast
+                            try:
+                                parsed_payload = ast.literal_eval(payload)
+                                logger.debug("Successfully parsed payload as Python literal")
+                                request_body = parsed_payload
+                            except (SyntaxError, ValueError) as e2:
+                                logger.debug(f"Failed to parse payload string: {e2}")
+                                return {"error": f"Invalid payload format: {e2}", "payload": payload}
+                except Exception as e:
+                    logger.debug(f"Error parsing payload string: {e}")
+                    return {"error": f"Failed to parse payload: {e}", "payload": payload}
+            else:
+                # If payload is already a dictionary, use it directly
+                logger.debug("Using provided payload dictionary")
+                request_body = payload
 
-            service_config = ServiceConfig(**body)
+            # Import the ServiceConfig class
+            try:
+                from instana_client.models.service_config import (
+                    ServiceConfig,
+                )
+                logger.debug("Successfully imported ServiceConfig")
+            except ImportError as e:
+                logger.debug(f"Error importing ServiceConfig: {e}")
+                return {"error": f"Failed to import ServiceConfig: {e!s}"}
 
+            # Create an ServiceConfig object from the request body
+            try:
+                logger.debug(f"Creating ServiceConfig with params: {request_body}")
+                config_object = [ServiceConfig(**request_body)]
+                logger.debug("Successfully update service config object")
+            except Exception as e:
+                logger.debug(f"Error creating ServiceConfig: {e}")
+                return {"error": f"Failed to replace all manual config object: {e!s}"}
+
+            # Call the put_service_config method from the SDK
+            logger.debug("Calling put_service_config with config object")
             result = api_client.put_service_config(
                 id=id,
-                service_config=service_config
+                service_config=config_object
             )
 
             # Convert the result to a dictionary
@@ -1134,12 +1705,14 @@ class ApplicationSettingsMCPTools(BaseInstanaClient):
                 result_dict = result.to_dict()
             else:
                 # If it's already a dict or another format, use it as is
-                result_dict = result
+                result_dict = result or {
+                    "success": True,
+                    "message": "put service config"
+                }
 
-            debug_print(f"Result from add_service_config: {result_dict}")
+            logger.debug(f"Result from put_service_config: {result_dict}")
             return result_dict
-
         except Exception as e:
-            debug_print(f"Error in add_service_config: {e}")
-            traceback.print_exc(file=sys.stderr)
-            return [{"error": f"Failed to add new service config: {e!s}"}]
+            logger.error(f"Error in put_service_config: {e}")
+            return {"error": f"Failed to update service config: {e!s}"}
+

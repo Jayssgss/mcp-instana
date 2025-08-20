@@ -38,7 +38,7 @@ class ApplicationMetricsMCPTools(BaseInstanaClient):
         super().__init__(read_token=read_token, base_url=base_url)
 
     @register_as_tool
-    @with_header_auth(ApplicationMetricsApi, allow_mock=True)
+    @with_header_auth(ApplicationMetricsApi)
     async def get_application_data_metrics_v2(self,
                                               metrics: Optional[List[Dict[str, Any]]] = None,
                                               time_frame: Optional[Dict[str, int]] = None,
@@ -122,7 +122,7 @@ class ApplicationMetricsMCPTools(BaseInstanaClient):
             return {"error": f"Failed to get application data metrics: {e!s}"}
 
     @register_as_tool
-    @with_header_auth(ApplicationMetricsApi, allow_mock=True)
+    @with_header_auth(ApplicationMetricsApi)
     async def get_application_metrics(self,
                                       application_ids: Optional[List[str]] = None,
                                       metrics: Optional[List[Dict[str, str]]] = None,
@@ -200,7 +200,7 @@ class ApplicationMetricsMCPTools(BaseInstanaClient):
             return {"error": f"Failed to get application metrics: {e!s}"}
 
     @register_as_tool
-    @with_header_auth(ApplicationMetricsApi, allow_mock=True)
+    @with_header_auth(ApplicationMetricsApi)
     async def get_endpoints_metrics(self,
                                     endpoint_ids: Optional[List[str]] = None,
                                     metrics: Optional[List[Dict[str, str]]] = None,
@@ -278,7 +278,7 @@ class ApplicationMetricsMCPTools(BaseInstanaClient):
             return {"error": f"Failed to get endpoints metrics: {e!s}"}
 
     @register_as_tool
-    @with_header_auth(ApplicationMetricsApi, allow_mock=True)
+    @with_header_auth(ApplicationMetricsApi)
     async def get_services_metrics(self,
                                    service_ids: Optional[List[str]] = None,
                                    metrics: Optional[List[Dict[str, str]]] = None,

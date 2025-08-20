@@ -123,10 +123,12 @@ class TestApplicationSettingsE2E:
 
         # Test the method
         result = await client.add_application_config(
-            access_rules=[{"accessType": "READ", "relationType": "GLOBAL", "value": "*"}],
-            boundary_scope="ALL",
-            label="New Test App",
-            scope="INCLUDE_NO_DOWNSTREAM",
+            payload={
+                "accessRules": [{"accessType": "READ", "relationType": "GLOBAL", "value": "*"}],
+                "boundaryScope": "ALL",
+                "label": "New Test App",
+                "scope": "INCLUDE_NO_DOWNSTREAM"
+            },
             api_client=mock_api_client
         )
 
@@ -151,16 +153,13 @@ class TestApplicationSettingsE2E:
 
         # Test the method with missing parameters
         result = await client.add_application_config(
-            access_rules=[],
-            boundary_scope="",
-            label="",
-            scope=""
+            payload={}
         )
 
         # Verify the result
         assert isinstance(result, dict)
         assert "error" in result
-        assert "Required enitities are missing" in result["error"]
+        assert "payload is required" in result["error"]
 
     @pytest.mark.asyncio
     @pytest.mark.mocked
@@ -179,10 +178,12 @@ class TestApplicationSettingsE2E:
 
         # Test the method
         result = await client.add_application_config(
-            access_rules=[{"accessType": "READ", "relationType": "GLOBAL", "value": "*"}],
-            boundary_scope="ALL",
-            label="Test App",
-            scope="INCLUDE_NO_DOWNSTREAM",
+            payload={
+                "accessRules": [{"accessType": "READ", "relationType": "GLOBAL", "value": "*"}],
+                "boundaryScope": "ALL",
+                "label": "Test App",
+                "scope": "INCLUDE_NO_DOWNSTREAM"
+            },
             api_client=mock_api_client
         )
 
@@ -360,7 +361,7 @@ class TestApplicationSettingsE2E:
 
         # Create mock API client
         mock_api_client = MagicMock()
-        mock_api_client.update_application_config = MagicMock()
+        mock_api_client.put_application_config = MagicMock()
 
         # Mock response
         mock_response = {
@@ -380,10 +381,13 @@ class TestApplicationSettingsE2E:
         # Test the method
         result = await client.update_application_config(
             id="app-123",
-            access_rules=[{"accessType": "READ", "relationType": "GLOBAL", "value": "*"}],
-            boundary_scope="ALL",
-            label="Updated Test App",
-            scope="INCLUDE_NO_DOWNSTREAM",
+            payload={
+                "id": "app-123",
+                "accessRules": [{"accessType": "READ", "relationType": "GLOBAL", "value": "*"}],
+                "boundaryScope": "ALL",
+                "label": "Updated Test App",
+                "scope": "INCLUDE_NO_DOWNSTREAM"
+            },
             api_client=mock_api_client
         )
 
@@ -409,16 +413,13 @@ class TestApplicationSettingsE2E:
         # Test the method with missing parameters
         result = await client.update_application_config(
             id="",
-            access_rules=[],
-            boundary_scope="",
-            label="",
-            scope=""
+            payload={}
         )
 
         # Verify the result
         assert isinstance(result, dict)
         assert "error" in result
-        assert "Required enitities are missing" in result["error"]
+        assert "missing arguments" in result["error"]
 
     @pytest.mark.asyncio
     @pytest.mark.mocked
@@ -488,8 +489,10 @@ class TestApplicationSettingsE2E:
 
         # Test the method
         result = await client.create_endpoint_config(
-            endpoint_case="ORIGINAL",
-            service_id="service-123",
+            payload={
+                "endpointCase": "ORIGINAL",
+                "serviceId": "service-123"
+            },
             api_client=mock_api_client
         )
 
@@ -513,12 +516,12 @@ class TestApplicationSettingsE2E:
         )
 
         # Test the method with missing parameters
-        result = await client.create_endpoint_config(endpoint_case="", service_id="")
+        result = await client.create_endpoint_config(payload={})
 
         # Verify the result
         assert isinstance(result, dict)
         assert "error" in result
-        assert "Required enitities are missing" in result["error"]
+        assert "missing arguments" in result["error"]
 
     @pytest.mark.asyncio
     @pytest.mark.mocked
@@ -614,8 +617,10 @@ class TestApplicationSettingsE2E:
         # Test the method
         result = await client.update_endpoint_config(
             id="endpoint-123",
-            endpoint_case="LOWER",
-            service_id="service-123",
+            payload={
+                "endpointCase": "LOWER",
+                "serviceId": "service-123"
+            },
             api_client=mock_api_client
         )
 
@@ -700,9 +705,11 @@ class TestApplicationSettingsE2E:
 
         # Test the method
         result = await client.add_manual_service_config(
-            tagFilterExpression={"type": "EXPRESSION", "logicalOperator": "AND", "elements": []},
-            unmonitoredServiceName="New Test Service",
-            existingServiceId="service-123",
+            payload={
+                "tagFilterExpression": {"type": "EXPRESSION", "logicalOperator": "AND", "elements": []},
+                "unmonitoredServiceName": "New Test Service",
+                "existingServiceId": "service-123"
+            },
             api_client=mock_api_client
         )
 
@@ -752,9 +759,8 @@ class TestApplicationSettingsE2E:
         mock_api_client = MagicMock()
         mock_api_client.update_manual_service_config = MagicMock()
 
-        # Mock response
-        mock_response = MagicMock()
-        mock_response.to_dict.return_value = {
+        # Mock response - return dict directly
+        mock_response = {
             "id": "service-123",
             "name": "Updated Test Service",
             "type": "PYTHON"
@@ -770,9 +776,12 @@ class TestApplicationSettingsE2E:
         # Test the method
         result = await client.update_manual_service_config(
             id="service-123",
-            tagFilterExpression={"type": "EXPRESSION", "logicalOperator": "AND", "elements": []},
-            unmonitoredServiceName="Updated Test Service",
-            existingServiceId="service-123",
+            payload={
+                "id": "service-123",
+                "tagFilterExpression": {"type": "EXPRESSION", "logicalOperator": "AND", "elements": []},
+                "unmonitoredServiceName": "Updated Test Service",
+                "existingServiceId": "service-123"
+            },
             api_client=mock_api_client
         )
 
@@ -798,7 +807,7 @@ class TestApplicationSettingsE2E:
             {"id": "service-1", "name": "Replaced Service 1", "type": "JAVA"},
             {"id": "service-2", "name": "Replaced Service 2", "type": "PYTHON"}
         ]
-        mock_api_client.replace_all_manual_service_configs.return_value = mock_response
+        mock_api_client.replace_all_manual_service_config.return_value = mock_response
 
         # Create the client
         client = ApplicationSettingsMCPTools(
@@ -808,9 +817,11 @@ class TestApplicationSettingsE2E:
 
         # Test the method
         result = await client.replace_all_manual_service_config(
-            tagFilterExpression={"type": "EXPRESSION", "logicalOperator": "AND", "elements": []},
-            unmonitoredServiceName="Replaced Service 1",
-            existingServiceId="service-123",
+            payload={
+                "tagFilterExpression": {"type": "EXPRESSION", "logicalOperator": "AND", "elements": []},
+                "unmonitoredServiceName": "Replaced Service 1",
+                "existingServiceId": "service-123"
+            },
             api_client=mock_api_client
         )
 
@@ -821,7 +832,7 @@ class TestApplicationSettingsE2E:
         assert result[1]["name"] == "Replaced Service 2"
 
         # Verify the API was called correctly
-        mock_api_client.replace_all_manual_service_configs.assert_called_once()
+        mock_api_client.replace_all_manual_service_config.assert_called_once()
 
     @pytest.mark.asyncio
     @pytest.mark.mocked
@@ -913,7 +924,7 @@ class TestApplicationSettingsE2E:
 
         # Create mock API client
         mock_api_client = MagicMock()
-        mock_api_client.replace_all_service_configs = MagicMock()
+        mock_api_client.replace_all = MagicMock()
 
         # Mock response - return list directly
         mock_response = [
@@ -930,11 +941,13 @@ class TestApplicationSettingsE2E:
 
         # Test the method
         result = await client.replace_all_service_configs(
-            enabled=True,
-            match_specification=[{"type": "TAG", "key": "service.name", "operator": "EQUALS", "value": "Replaced Service 1"}],
-            name="Replaced Service 1",
-            label="Replaced Service 1",
-            id="service-1",
+            payload={
+                "enabled": True,
+                "matchSpecification": [{"type": "TAG", "key": "service.name", "operator": "EQUALS", "value": "Replaced Service 1"}],
+                "name": "Replaced Service 1",
+                "label": "Replaced Service 1",
+                "id": "service-1"
+            },
             api_client=mock_api_client
         )
 
@@ -1107,6 +1120,13 @@ class TestApplicationSettingsE2E:
             name="Updated Service 1",
             label="Updated Service 1",
             id="service-1",
+            payload={
+                "enabled": True,
+                "matchSpecification": [{"type": "TAG", "key": "service.name", "operator": "EQUALS", "value": "Updated Service 1"}],
+                "name": "Updated Service 1",
+                "label": "Updated Service 1",
+                "id": "service-1"
+            },
             api_client=mock_api_client
         )
 
@@ -1133,27 +1153,27 @@ class TestApplicationSettingsE2E:
         # Test all methods with None api_client
         methods_to_test = [
             ("get_all_applications_configs", {}),
-            ("add_application_config", {"access_rules": [{"accessType": "READ", "relationType": "GLOBAL", "value": "*"}], "boundary_scope": "ALL", "label": "test", "scope": "INCLUDE_NO_DOWNSTREAM"}),
+            ("add_application_config", {"payload": {"accessRules": [{"accessType": "READ", "relationType": "GLOBAL", "value": "*"}], "boundaryScope": "ALL", "label": "test", "scope": "INCLUDE_NO_DOWNSTREAM"}}),
             ("delete_application_config", {"id": "test"}),
             ("get_application_config", {"id": "test"}),
-            ("update_application_config", {"id": "test", "access_rules": [{"accessType": "READ", "relationType": "GLOBAL", "value": "*"}], "boundary_scope": "ALL", "label": "test", "scope": "INCLUDE_NO_DOWNSTREAM"}),
+            ("update_application_config", {"id": "test", "payload": {"accessRules": [{"accessType": "READ", "relationType": "GLOBAL", "value": "*"}], "boundaryScope": "ALL", "label": "test", "scope": "INCLUDE_NO_DOWNSTREAM"}}),
             ("get_all_endpoint_configs", {}),
-            ("create_endpoint_config", {"endpoint_case": "ORIGINAL", "service_id": "test"}),
+            ("create_endpoint_config", {"payload": {"endpointCase": "ORIGINAL", "serviceId": "test"}}),
             ("delete_endpoint_config", {"id": "test"}),
             ("get_endpoint_config", {"id": "test"}),
-            ("update_endpoint_config", {"id": "test", "endpoint_case": "ORIGINAL", "service_id": "test"}),
+            ("update_endpoint_config", {"id": "test", "payload": {"endpointCase": "ORIGINAL", "serviceId": "test"}}),
             ("get_all_manual_service_configs", {}),
-            ("add_manual_service_config", {"tagFilterExpression": {"type": "EXPRESSION", "logicalOperator": "AND", "elements": []}, "unmonitoredServiceName": "test", "existingServiceId": "test"}),
+            ("add_manual_service_config", {"payload": {"tagFilterExpression": {"type": "EXPRESSION", "logicalOperator": "AND", "elements": []}, "unmonitoredServiceName": "test", "existingServiceId": "test"}}),
             ("delete_manual_service_config", {"id": "test"}),
-            ("update_manual_service_config", {"id": "test", "tagFilterExpression": {"type": "EXPRESSION", "logicalOperator": "AND", "elements": []}, "unmonitoredServiceName": "test", "existingServiceId": "test"}),
-            ("replace_all_manual_service_config", {"tagFilterExpression": {"type": "EXPRESSION", "logicalOperator": "AND", "elements": []}, "unmonitoredServiceName": "test", "existingServiceId": "test"}),
+            ("update_manual_service_config", {"id": "test", "payload": {"tagFilterExpression": {"type": "EXPRESSION", "logicalOperator": "AND", "elements": []}, "unmonitoredServiceName": "test", "existingServiceId": "test"}}),
+            ("replace_all_manual_service_config", {"payload": {"tagFilterExpression": {"type": "EXPRESSION", "logicalOperator": "AND", "elements": []}, "unmonitoredServiceName": "test", "existingServiceId": "test"}}),
             ("get_all_service_configs", {}),
             ("add_service_configs", {"enabled": True, "match_specification": [{"type": "TAG", "key": "test"}], "name": "test", "label": "test", "id": "test"}),
-            ("replace_all_service_configs", {"enabled": True, "match_specification": [{"type": "TAG", "key": "test"}], "name": "test", "label": "test", "id": "test"}),
+            ("replace_all_service_configs", {"payload": {"enabled": True, "matchSpecification": [{"type": "TAG", "key": "test"}], "name": "test", "label": "test", "id": "test"}}),
             ("order_service_config", {"request_body": ["test"]}),
             ("delete_service_config", {"id": "test"}),
             ("get_service_config", {"id": "test"}),
-            ("update_service_configs", {"enabled": True, "match_specification": [{"type": "TAG", "key": "test"}], "name": "test", "label": "test", "id": "test"})
+            ("update_service_configs", {"enabled": True, "match_specification": [{"type": "TAG", "key": "test"}], "name": "test", "label": "test", "id": "test", "payload": {"enabled": True, "matchSpecification": [{"type": "TAG", "key": "test"}], "name": "test", "label": "test", "id": "test"}})
         ]
 
         for method_name, params in methods_to_test:
@@ -1186,10 +1206,10 @@ class TestApplicationSettingsE2E:
         # Test error handling for various methods
         methods_to_test = [
             ("get_all_applications_configs", {}),
-            ("add_application_config", {"access_rules": [{"accessType": "READ", "relationType": "GLOBAL", "value": "*"}], "boundary_scope": "ALL", "label": "test", "scope": "INCLUDE_NO_DOWNSTREAM"}),
+            ("add_application_config", {"payload": {"accessRules": [{"accessType": "READ", "relationType": "GLOBAL", "value": "*"}], "boundaryScope": "ALL", "label": "test", "scope": "INCLUDE_NO_DOWNSTREAM"}}),
             ("delete_application_config", {"id": "test"}),
             ("get_application_config", {"id": "test"}),
-            ("update_application_config", {"id": "test", "access_rules": [{"accessType": "READ", "relationType": "GLOBAL", "value": "*"}], "boundary_scope": "ALL", "label": "test", "scope": "INCLUDE_NO_DOWNSTREAM"})
+            ("update_application_config", {"id": "test", "payload": {"accessRules": [{"accessType": "READ", "relationType": "GLOBAL", "value": "*"}], "boundaryScope": "ALL", "label": "test", "scope": "INCLUDE_NO_DOWNSTREAM"}})
         ]
 
         for method_name, params in methods_to_test:
