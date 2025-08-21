@@ -21,6 +21,36 @@ except ImportError:
     mock_module.ApplicationSettingsApi = ApplicationSettingsApi
     sys.modules['instana_client.api.application_settings_api'] = mock_module
 
+# Mock the instana_client.models modules if they don't exist
+model_classes = [
+    'ApplicationConfig',
+    'EndpointConfig',
+    'ManualServiceConfig',
+    'NewApplicationConfig',
+    'NewManualServiceConfig',
+    'ServiceConfig'
+]
+
+for model_class in model_classes:
+    try:
+        # Try to import the model class
+        exec(f"from instana_client.models.{model_class.lower()} import {model_class}")
+    except ImportError:
+        # Create a mock class if import fails
+        mock_class = type(model_class, (), {
+            '__init__': lambda self, **kwargs: None,
+            'to_dict': lambda self: {}
+        })
+
+        # Mock the module
+        module_name = f'instana_client.models.{model_class.lower()}'
+        mock_module = MagicMock()
+        mock_module.__dict__[model_class] = mock_class
+        sys.modules[module_name] = mock_module
+
+        # Add the class to globals
+        globals()[model_class] = mock_class
+
 from src.application.application_settings import ApplicationSettingsMCPTools
 
 
