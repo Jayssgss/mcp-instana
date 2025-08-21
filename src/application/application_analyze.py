@@ -554,11 +554,13 @@ class ApplicationAnalyzeMCPTools(BaseInstanaClient):
                 query_params = {}
                 if request_body and "group" in request_body:
                     query_params["group"] = request_body["group"]
+                if request_body and "metrics" in request_body:
+                    query_params["metrics"] = request_body["metrics"]
                 logger.debug(f"Creating GetCallGroups with params: {query_params}")
                 config_object = GetCallGroups(**query_params)
                 logger.debug("Successfully created endpoint config object")
             except Exception as e:
-                logger.debug(f"Error creating GetTraceGroups: {e}")
+                logger.debug(f"Error creating GetCallGroups: {e}")
                 return {"error": f"Failed to create config object: {e!s}"}
 
             # Call the get_call_groups method from the SDK

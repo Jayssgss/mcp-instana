@@ -827,9 +827,11 @@ class TestApplicationSettingsE2E:
 
         # Verify the result
         assert isinstance(result, list)
-        assert len(result) == 2
-        assert result[0]["name"] == "Replaced Service 1"
-        assert result[1]["name"] == "Replaced Service 2"
+        assert len(result) == 1
+        assert isinstance(result[0], list)
+        assert len(result[0]) == 2
+        assert result[0][0]["name"] == "Replaced Service 1"
+        assert result[0][1]["name"] == "Replaced Service 2"
 
         # Verify the API was called correctly
         mock_api_client.replace_all_manual_service_config.assert_called_once()
@@ -878,12 +880,12 @@ class TestApplicationSettingsE2E:
 
     @pytest.mark.asyncio
     @pytest.mark.mocked
-    async def test_add_service_configs_success(self, instana_credentials):
-        """Test adding service configs successfully."""
+    async def test_add_service_config_success(self, instana_credentials):
+        """Test adding service config successfully."""
 
         # Create mock API client
         mock_api_client = MagicMock()
-        mock_api_client.add_service_configs = MagicMock()
+        mock_api_client.add_service_config = MagicMock()
 
         # Mock response - return list directly
         mock_response = [
@@ -899,12 +901,14 @@ class TestApplicationSettingsE2E:
         )
 
         # Test the method
-        result = await client.add_service_configs(
-            enabled=True,
-            match_specification=[{"type": "TAG", "key": "service.name", "operator": "EQUALS", "value": "New Service 1"}],
-            name="New Service 1",
-            label="New Service 1",
-            id="new-service-1",
+        result = await client.add_service_config(
+            payload={
+                "enabled": True,
+                "matchSpecification": [{"type": "TAG", "key": "service.name", "operator": "EQUALS", "value": "New Service 1"}],
+                "name": "New Service 1",
+                "label": "New Service 1",
+                "id": "new-service-1"
+            },
             api_client=mock_api_client
         )
 
@@ -953,9 +957,11 @@ class TestApplicationSettingsE2E:
 
         # Verify the result
         assert isinstance(result, list)
-        assert len(result) == 2
-        assert result[0]["name"] == "Replaced Service 1"
-        assert result[1]["name"] == "Replaced Service 2"
+        assert len(result) == 1
+        assert isinstance(result[0], list)
+        assert len(result[0]) == 2
+        assert result[0][0]["name"] == "Replaced Service 1"
+        assert result[0][1]["name"] == "Replaced Service 2"
 
         # Verify the API was called correctly
         mock_api_client.replace_all.assert_called_once()
@@ -1093,12 +1099,12 @@ class TestApplicationSettingsE2E:
 
     @pytest.mark.asyncio
     @pytest.mark.mocked
-    async def test_update_service_configs_success(self, instana_credentials):
-        """Test updating service configs successfully."""
+    async def test_update_service_config_success(self, instana_credentials):
+        """Test updating service config successfully."""
 
         # Create mock API client
         mock_api_client = MagicMock()
-        mock_api_client.update_service_configs = MagicMock()
+        mock_api_client.put_service_config = MagicMock()
 
         # Mock response - return list directly
         mock_response = [
@@ -1114,11 +1120,7 @@ class TestApplicationSettingsE2E:
         )
 
         # Test the method
-        result = await client.update_service_configs(
-            enabled=True,
-            match_specification=[{"type": "TAG", "key": "service.name", "operator": "EQUALS", "value": "Updated Service 1"}],
-            name="Updated Service 1",
-            label="Updated Service 1",
+        result = await client.update_service_config(
             id="service-1",
             payload={
                 "enabled": True,
@@ -1132,9 +1134,11 @@ class TestApplicationSettingsE2E:
 
         # Verify the result
         assert isinstance(result, list)
-        assert len(result) == 2
-        assert result[0]["name"] == "Updated Service 1"
-        assert result[1]["name"] == "Updated Service 2"
+        assert len(result) == 1
+        assert isinstance(result[0], list)
+        assert len(result[0]) == 2
+        assert result[0][0]["name"] == "Updated Service 1"
+        assert result[0][1]["name"] == "Updated Service 2"
 
         # Verify the API was called correctly
         mock_api_client.put_service_config.assert_called_once()
@@ -1168,12 +1172,12 @@ class TestApplicationSettingsE2E:
             ("update_manual_service_config", {"id": "test", "payload": {"tagFilterExpression": {"type": "EXPRESSION", "logicalOperator": "AND", "elements": []}, "unmonitoredServiceName": "test", "existingServiceId": "test"}}),
             ("replace_all_manual_service_config", {"payload": {"tagFilterExpression": {"type": "EXPRESSION", "logicalOperator": "AND", "elements": []}, "unmonitoredServiceName": "test", "existingServiceId": "test"}}),
             ("get_all_service_configs", {}),
-            ("add_service_configs", {"enabled": True, "match_specification": [{"type": "TAG", "key": "test"}], "name": "test", "label": "test", "id": "test"}),
+            ("add_service_config", {"enabled": True, "match_specification": [{"type": "TAG", "key": "test"}], "name": "test", "label": "test", "id": "test"}),
             ("replace_all_service_configs", {"payload": {"enabled": True, "matchSpecification": [{"type": "TAG", "key": "test"}], "name": "test", "label": "test", "id": "test"}}),
             ("order_service_config", {"request_body": ["test"]}),
             ("delete_service_config", {"id": "test"}),
             ("get_service_config", {"id": "test"}),
-            ("update_service_configs", {"enabled": True, "match_specification": [{"type": "TAG", "key": "test"}], "name": "test", "label": "test", "id": "test", "payload": {"enabled": True, "matchSpecification": [{"type": "TAG", "key": "test"}], "name": "test", "label": "test", "id": "test"}})
+            ("update_service_config", {"enabled": True, "match_specification": [{"type": "TAG", "key": "test"}], "name": "test", "label": "test", "id": "test", "payload": {"enabled": True, "matchSpecification": [{"type": "TAG", "key": "test"}], "name": "test", "label": "test", "id": "test"}})
         ]
 
         for method_name, params in methods_to_test:

@@ -1489,7 +1489,7 @@ class ApplicationSettingsMCPTools(BaseInstanaClient):
 
             # Convert the result to a list of dictionaries
             if hasattr(result, 'to_dict'):
-                result_list = result.to_dict()
+                result_dict = result.to_dict()
             else:
                 # If it's already a dict or another format, use it as is
                 result_dict = result or {

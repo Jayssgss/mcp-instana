@@ -894,7 +894,10 @@ class TestApplicationAnalyzeE2E:
             mock_api = MagicMock()
             mock_api.get_call_group.return_value = mock_response
             mock_api_class.return_value = mock_api
-            mock_get_call_groups.return_value = {}
+
+            # Mock GetCallGroups to return a valid object
+            mock_config = MagicMock()
+            mock_get_call_groups.return_value = mock_config
 
             # Create the client
             client = ApplicationAnalyzeMCPTools(
