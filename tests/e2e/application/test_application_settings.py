@@ -6,8 +6,6 @@ from unittest.mock import MagicMock
 
 import pytest  #type: ignore
 
-
-
 from src.application.application_settings import ApplicationSettingsMCPTools
 
 
