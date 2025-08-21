@@ -259,22 +259,12 @@ class ApplicationAnalyzeMCPTools(BaseInstanaClient):
                 query_params = {}
                 if request_body and "tag_filter_expression" in request_body:
                     query_params["tag_filter_expression"] = request_body["tag_filter_expression"]
-                if request_body and "includeInternal" in request_body:
-                    query_params["include_internal"] = request_body["includeInternal"]
-                if request_body and "includeSynthetic" in request_body:
-                    query_params["include_synthetic"] = request_body["includeSynthetic"]
-                if request_body and "order" in request_body:
-                    query_params["order"] = request_body["order"]
-                if request_body and "pagination" in request_body:
-                    query_params["pagination"] = request_body["pagination"]
-                if request_body and "timeFrame" in request_body:
-                    query_params["time_frame"] = request_body["timeFrame"]
                 logger.debug(f"Creating get_traces with params: {query_params}")
                 config_object = GetTraces(**query_params)
                 logger.debug("Successfully got traces")
             except Exception as e:
                 logger.debug(f"Error creating get_traces: {e}")
-                return {"error": f"Failed to get traces: {e!s}"}
+                return {"error": f"Failed to get tracest: {e!s}"}
 
             # Call the get_traces method from the SDK
             logger.debug("Calling get_traces with config object")
@@ -411,20 +401,8 @@ class ApplicationAnalyzeMCPTools(BaseInstanaClient):
                     query_params["group"] = request_body["group"]
                 if request_body and "metrics" in request_body:
                     query_params["metrics"] = request_body["metrics"]
-                if request_body and "tagFilterExpression" in request_body:
-                    query_params["tag_filter_expression"] = request_body["tagFilterExpression"]
-                if request_body and "includeInternal" in request_body:
-                    query_params["include_internal"] = request_body["includeInternal"]
-                if request_body and "includeSynthetic" in request_body:
-                    query_params["include_synthetic"] = request_body["includeSynthetic"]
-                if request_body and "fillTimeSeries" in request_body:
-                    query_params["fill_time_series"] = request_body["fillTimeSeries"]
-                if request_body and "order" in request_body:
-                    query_params["order"] = request_body["order"]
-                if request_body and "pagination" in request_body:
-                    query_params["pagination"] = request_body["pagination"]
-                if request_body and "timeFrame" in request_body:
-                    query_params["time_frame"] = request_body["timeFrame"]
+                if request_body and "tag_filter_expression" in request_body:
+                    query_params["tag_filter_expression"] = request_body["tag_filter_expression"]
                 logger.debug(f"Creating GetTraceGroups with params: {query_params}")
                 config_object = GetTraceGroups(**query_params)
                 logger.debug("Successfully created endpoint config object")
@@ -576,27 +554,11 @@ class ApplicationAnalyzeMCPTools(BaseInstanaClient):
                 query_params = {}
                 if request_body and "group" in request_body:
                     query_params["group"] = request_body["group"]
-                if request_body and "metrics" in request_body:
-                    query_params["metrics"] = request_body["metrics"]
-                if request_body and "includeInternal" in request_body:
-                    query_params["include_internal"] = request_body["includeInternal"]
-                if request_body and "includeSynthetic" in request_body:
-                    query_params["include_synthetic"] = request_body["includeSynthetic"]
-                if request_body and "fillTimeSeries" in request_body:
-                    query_params["fill_time_series"] = request_body["fillTimeSeries"]
-                if request_body and "order" in request_body:
-                    query_params["order"] = request_body["order"]
-                if request_body and "pagination" in request_body:
-                    query_params["pagination"] = request_body["pagination"]
-                if request_body and "timeFrame" in request_body:
-                    query_params["time_frame"] = request_body["timeFrame"]
-                if request_body and "tagFilterExpression" in request_body:
-                    query_params["tag_filter_expression"] = request_body["tagFilterExpression"]
                 logger.debug(f"Creating GetCallGroups with params: {query_params}")
                 config_object = GetCallGroups(**query_params)
                 logger.debug("Successfully created endpoint config object")
             except Exception as e:
-                logger.debug(f"Error creating GetCallGroups: {e}")
+                logger.debug(f"Error creating GetTraceGroups: {e}")
                 return {"error": f"Failed to create config object: {e!s}"}
 
             # Call the get_call_groups method from the SDK

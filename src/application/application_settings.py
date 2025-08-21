@@ -1135,7 +1135,7 @@ class ApplicationSettingsMCPTools(BaseInstanaClient):
         payload: Union[Dict[str, Any], str],
         ctx=None,
         api_client=None
-    ) -> Dict[str, Any]:
+    ) -> List[Dict[str, Any]]:
         """
         This tool is used if one wants to update more than 1 manual service configurations.
 
@@ -1168,6 +1168,150 @@ class ApplicationSettingsMCPTools(BaseInstanaClient):
 
         Returns:
             Dict[str, Any]: API response indicating success or failure.
+        """
+        try:
+            if not payload:
+                return [{"error": "missing arguments"}]
+
+            # Parse the payload if it's a string
+            if isinstance(payload, str):
+                logger.debug("Payload is a string, attempting to parse")
+                try:
+                    import json
+                    try:
+                        parsed_payload = json.loads(payload)
+                        logger.debug("Successfully parsed payload as JSON")
+                        request_body = parsed_payload
+                    except json.JSONDecodeError as e:
+                        logger.debug(f"JSON parsing failed: {e}, trying with quotes replaced")
+
+                        # Try replacing single quotes with double quotes
+                        fixed_payload = payload.replace("'", "\"")
+                        try:
+                            parsed_payload = json.loads(fixed_payload)
+                            logger.debug("Successfully parsed fixed JSON")
+                            request_body = parsed_payload
+                        except json.JSONDecodeError:
+                            # Try as Python literal
+                            import ast
+                            try:
+                                parsed_payload = ast.literal_eval(payload)
+                                logger.debug("Successfully parsed payload as Python literal")
+                                request_body = parsed_payload
+                            except (SyntaxError, ValueError) as e2:
+                                logger.debug(f"Failed to parse payload string: {e2}")
+                                return [{"error": f"Invalid payload format: {e2}", "payload": payload}]
+                except Exception as e:
+                    logger.debug(f"Error parsing payload string: {e}")
+                    return [{"error": f"Failed to parse payload: {e}", "payload": payload}]
+            else:
+                # If payload is already a dictionary, use it directly
+                logger.debug("Using provided payload dictionary")
+                request_body = payload
+
+            # Import the NewManualServiceConfig class
+            try:
+                from instana_client.models.new_manual_service_config import (
+                    NewManualServiceConfig,
+                )
+                logger.debug("Successfully imported ManualServiceConfig")
+            except ImportError as e:
+                logger.debug(f"Error importing ManualServiceConfig: {e}")
+                return [{"error": f"Failed to import ManualServiceConfig: {e!s}"}]
+
+            # Create an ManualServiceConfig object from the request body
+            try:
+                logger.debug(f"Creating ManualServiceConfig with params: {request_body}")
+                config_object = [NewManualServiceConfig(**request_body)]
+                logger.debug("Successfully replace all manual service config object")
+            except Exception as e:
+                logger.debug(f"Error creating ManualServiceConfig: {e}")
+                return [{"error": f"Failed to replace all manual config object: {e!s}"}]
+
+            # Call the replace_all_manual_service_config method from the SDK
+            logger.debug("Calling replace_all_manual_service_config with config object")
+            result = api_client.replace_all_manual_service_config(
+                new_manual_service_config=config_object
+            )
+
+            # Convert the result to a dictionary
+            if hasattr(result, 'to_dict'):
+                result_dict = result.to_dict()
+            else:
+                # If it's already a dict or another format, use it as is
+                result_dict = result or {
+                    "success": True,
+                    "message": "Create replace all manual service config"
+                }
+
+            logger.debug(f"Result from replace_all_manual_service_config: {result_dict}")
+            return [result_dict]
+        except Exception as e:
+            logger.error(f"Error in replace_all_manual_service_config: {e}")
+            return [{"error": f"Failed to replace all manual config: {e!s}"}]
+
+    @register_as_tool
+    @with_header_auth(ApplicationSettingsApi)
+    async def get_all_service_configs(self,
+                             ctx=None,
+                             api_client=None) -> List[Dict[str, Any]]:
+        """
+        This tool gives list of All Service Perspectives Configuration
+        Get a list of all Service Perspectives with their configuration settings.
+        Args:
+            ctx: The MCP context (optional)
+
+        Returns:
+            Dictionary containing endpoints data or error information
+        """
+        try:
+            debug_print("Fetching all service configs")
+            result = api_client.get_service_configs()
+            # Convert the result to a dictionary
+            if hasattr(result, 'to_dict'):
+                result_dict = result.to_dict()
+            else:
+                # If it's already a dict or another format, use it as is
+                result_dict = result
+
+            debug_print(f"Result from get_service_configs: {result_dict}")
+            return result_dict
+
+        except Exception as e:
+            debug_print(f"Error in get_all_service_configs: {e}")
+            traceback.print_exc(file=sys.stderr)
+            return [{"error": f"Failed to get application data metrics: {e}"}]
+
+    @register_as_tool
+    @with_header_auth(ApplicationSettingsApi)
+    async def add_service_config(self,
+                            payload: Union[Dict[str, Any], str],
+                            ctx=None,
+                            api_client=None) -> Dict[str, Any]:
+        """
+        This tool gives is used to add new Service Perspectives Configuration
+        Get a list of all Service Perspectives with their configuration settings.
+        Args:
+        {
+        "comment": null,
+        "enabled": true,
+        "label": "{gce.zone}-{jvm.args.abc}",
+        "matchSpecification": [
+            {
+            "key": "gce.zone",
+            "value": ".*"
+            },
+            {
+            "key": "jvm.args.abc",
+            "value": ".*"
+            }
+        ],
+        "name": "ABC is good"
+        }
+            ctx: The MCP context (optional)
+
+        Returns:
+            Dictionary containing endpoints data or error information
         """
         try:
             if not payload:
@@ -1208,130 +1352,6 @@ class ApplicationSettingsMCPTools(BaseInstanaClient):
                 # If payload is already a dictionary, use it directly
                 logger.debug("Using provided payload dictionary")
                 request_body = payload
-
-            # Import the NewManualServiceConfig class
-            try:
-                from instana_client.models.new_manual_service_config import (
-                    NewManualServiceConfig,
-                )
-                logger.debug("Successfully imported ManualServiceConfig")
-            except ImportError as e:
-                logger.debug(f"Error importing ManualServiceConfig: {e}")
-                return {"error": f"Failed to import ManualServiceConfig: {e!s}"}
-
-            # Create an ManualServiceConfig object from the request body
-            try:
-                logger.debug(f"Creating ManualServiceConfig with params: {request_body}")
-                config_object = [NewManualServiceConfig(**request_body)]
-                logger.debug("Successfully replace all manual service config object")
-            except Exception as e:
-                logger.debug(f"Error creating ManualServiceConfig: {e}")
-                return {"error": f"Failed to replace all manual config object: {e!s}"}
-
-            # Call the replace_all_manual_service_config method from the SDK
-            logger.debug("Calling replace_all_manual_service_config with config object")
-            result = api_client.replace_all_manual_service_config(
-                new_manual_service_config=config_object
-            )
-
-            # Convert the result to a dictionary
-            if hasattr(result, 'to_dict'):
-                result_dict = result.to_dict()
-            else:
-                # If it's already a dict or another format, use it as is
-                result_dict = result or {
-                    "success": True,
-                    "message": "Create replace all manual service config"
-                }
-
-            logger.debug(f"Result from replace_all_manual_service_config: {result_dict}")
-            return result_dict
-        except Exception as e:
-            logger.error(f"Error in replace_all_manual_service_config: {e}")
-            return {"error": f"Failed to replace all manual config: {e!s}"}
-
-    @register_as_tool
-    @with_header_auth(ApplicationSettingsApi)
-    async def get_all_service_configs(self,
-                             ctx=None,
-                             api_client=None) -> List[Dict[str, Any]]:
-        """
-        This tool gives list of All Service Perspectives Configuration
-        Get a list of all Service Perspectives with their configuration settings.
-        Args:
-            ctx: The MCP context (optional)
-
-        Returns:
-            Dictionary containing endpoints data or error information
-        """
-        try:
-            debug_print("Fetching all service configs")
-            result = api_client.get_service_configs()
-            # Convert the result to a dictionary
-            if hasattr(result, 'to_dict'):
-                result_dict = result.to_dict()
-            else:
-                # If it's already a dict or another format, use it as is
-                result_dict = result
-
-            debug_print(f"Result from get_service_configs: {result_dict}")
-            return result_dict
-
-        except Exception as e:
-            debug_print(f"Error in get_all_service_configs: {e}")
-            traceback.print_exc(file=sys.stderr)
-            return [{"error": f"Failed to get application data metrics: {e}"}]
-
-    @register_as_tool
-    @with_header_auth(ApplicationSettingsApi)
-    async def add_service_configs(self,
-                            enabled: bool,
-                            match_specification: List[Dict[str, str]],
-                            name: str,
-                            label:str,
-                            id: str,
-                            comment: Optional[str] = None,
-                            ctx=None,
-                            api_client=None) -> Dict[str, Any]:
-        """
-        This tool gives is used to add new Service Perspectives Configuration
-        Get a list of all Service Perspectives with their configuration settings.
-        Args:
-        {
-        "comment": null,
-        "enabled": true,
-        "label": "{gce.zone}-{jvm.args.abc}",
-        "matchSpecification": [
-            {
-            "key": "gce.zone",
-            "value": ".*"
-            },
-            {
-            "key": "jvm.args.abc",
-            "value": ".*"
-            }
-        ],
-        "name": "ABC is good"
-        }
-            ctx: The MCP context (optional)
-
-        Returns:
-            Dictionary containing endpoints data or error information
-        """
-        try:
-            if not enabled or not match_specification or not name or not label or not id:
-                return {"error": "missing arguments"}
-
-            # Create request body from individual parameters
-            request_body = {
-                "enabled": enabled,
-                "matchSpecification": match_specification,
-                "name": name,
-                "label": label,
-                "id": id
-            }
-            if comment:
-                request_body["comment"] = comment
 
             # Import the ServiceConfig class
             try:
@@ -1471,11 +1491,14 @@ class ApplicationSettingsMCPTools(BaseInstanaClient):
             if hasattr(result, 'to_dict'):
                 result_list = result.to_dict()
             else:
-                # If it's already a list or another format, use it as is
-                result_list = result or []
+                # If it's already a dict or another format, use it as is
+                result_dict = result or {
+                    "success": True,
+                    "message": "replace all service config"
+                }
 
-            logger.debug(f"Result from replace_all: {result_list}")
-            return result_list
+            logger.debug(f"Result from replace_all: {result_dict}")
+            return [result_dict]
         except Exception as e:
             logger.error(f"Error in replace_all: {e}")
             return [{"error": f"Failed to replace all service config: {e!s}"}]
@@ -1600,11 +1623,7 @@ class ApplicationSettingsMCPTools(BaseInstanaClient):
 
     @register_as_tool
     @with_header_auth(ApplicationSettingsApi)
-    async def update_service_configs(self,
-                            enabled: bool,
-                            match_specification: List[Dict[str, str]],
-                            name: str,
-                            label:str,
+    async def update_service_config(self,
                             id: str,
                             payload: Union[Dict[str, Any], str],
                             ctx=None,
@@ -1636,7 +1655,7 @@ class ApplicationSettingsMCPTools(BaseInstanaClient):
         """
         try:
             if not payload or not id:
-                return {"error": "missing arguments"}
+                return [{"error": "missing arguments"}]
 
             # Parse the payload if it's a string
             if isinstance(payload, str):
@@ -1665,10 +1684,10 @@ class ApplicationSettingsMCPTools(BaseInstanaClient):
                                 request_body = parsed_payload
                             except (SyntaxError, ValueError) as e2:
                                 logger.debug(f"Failed to parse payload string: {e2}")
-                                return {"error": f"Invalid payload format: {e2}", "payload": payload}
+                                return [{"error": f"Invalid payload format: {e2}", "payload": payload}]
                 except Exception as e:
                     logger.debug(f"Error parsing payload string: {e}")
-                    return {"error": f"Failed to parse payload: {e}", "payload": payload}
+                    return [{"error": f"Failed to parse payload: {e}", "payload": payload}]
             else:
                 # If payload is already a dictionary, use it directly
                 logger.debug("Using provided payload dictionary")
@@ -1682,7 +1701,7 @@ class ApplicationSettingsMCPTools(BaseInstanaClient):
                 logger.debug("Successfully imported ServiceConfig")
             except ImportError as e:
                 logger.debug(f"Error importing ServiceConfig: {e}")
-                return {"error": f"Failed to import ServiceConfig: {e!s}"}
+                return [{"error": f"Failed to import ServiceConfig: {e!s}"}]
 
             # Create an ServiceConfig object from the request body
             try:
@@ -1691,7 +1710,7 @@ class ApplicationSettingsMCPTools(BaseInstanaClient):
                 logger.debug("Successfully update service config object")
             except Exception as e:
                 logger.debug(f"Error creating ServiceConfig: {e}")
-                return {"error": f"Failed to replace all manual config object: {e!s}"}
+                return [{"error": f"Failed to replace all manual config object: {e!s}"}]
 
             # Call the put_service_config method from the SDK
             logger.debug("Calling put_service_config with config object")
@@ -1711,8 +1730,8 @@ class ApplicationSettingsMCPTools(BaseInstanaClient):
                 }
 
             logger.debug(f"Result from put_service_config: {result_dict}")
-            return result_dict
+            return [result_dict]
         except Exception as e:
             logger.error(f"Error in put_service_config: {e}")
-            return {"error": f"Failed to update service config: {e!s}"}
+            return [{"error": f"Failed to update service config: {e!s}"}]
 
