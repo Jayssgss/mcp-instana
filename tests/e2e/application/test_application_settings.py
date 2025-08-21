@@ -2,9 +2,24 @@
 E2E tests for Application Settings MCP Tools
 """
 
+import sys
 from unittest.mock import MagicMock
 
 import pytest  #type: ignore
+
+# Mock the instana_client.api.application_settings_api module if it doesn't exist
+try:
+    from instana_client.api.application_settings_api import ApplicationSettingsApi
+except ImportError:
+    # Create a mock ApplicationSettingsApi class
+    class ApplicationSettingsApi:
+        def __init__(self, api_client=None):
+            self.api_client = api_client
+
+    # Mock the module
+    mock_module = MagicMock()
+    mock_module.ApplicationSettingsApi = ApplicationSettingsApi
+    sys.modules['instana_client.api.application_settings_api'] = mock_module
 
 from src.application.application_settings import ApplicationSettingsMCPTools
 
