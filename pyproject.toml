@@ -22,18 +22,16 @@ license = {text = "Apache-2.0"}
 dependencies = [
     # Core MCP framework - imported in src/prompts/__init__.py and src/core/server.py
     "fastmcp==2.10.3",
-    
+    # MCP SDK for types and annotations
+    "mcp",
     # Instana API client - imported in src/event/events_tools.py
     "instana_client==1.0.0",
-    
     # HTTP client - imported in src/core/utils.py
     "requests==2.32.4",
-    
     # Environment loading - imported in src/core/server.py
     "python-dotenv==1.1.0",
-    
     # Data validation - imported in src/infrastructure/infrastructure_metrics.py
-    "pydantic==2.11.7",
+    "pydantic==2.11.7"
 ]
 
 # Development dependencies for testing, linting, and development

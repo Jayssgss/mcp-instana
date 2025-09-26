@@ -1621,7 +1621,7 @@ class ApplicationSettingsMCPTools(BaseInstanaClient):
                             id: str,
                             payload: Union[Dict[str, Any], str],
                             ctx=None,
-                            api_client=None) -> Dict[str, Any]:
+                            api_client=None) -> Union[Dict[str, Any], List[Dict[str, Any]]]:
         """
         This tool gives is used if one wants to update a particular custom service rule.
         Args:

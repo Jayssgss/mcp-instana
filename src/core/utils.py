@@ -10,13 +10,45 @@ from typing import Any, Callable, Dict, Union
 
 import requests
 
+# Import MCP dependencies
+from mcp.types import ToolAnnotations
+
+from src.prompts import mcp
+
 # Registry to store all tools
 MCP_TOOLS = {}
 
-def register_as_tool(func):
-    """Decorator to register a method as an MCP tool."""
-    MCP_TOOLS[func.__name__] = func
-    return func
+def register_as_tool(title=None, annotations=None):
+    """
+    Enhanced decorator that registers both in MCP_TOOLS and with @mcp.tool
+
+    Args:
+        title: Title for the MCP tool (optional, defaults to function name)
+        annotations: ToolAnnotations for the MCP tool (optional)
+    """
+    def decorator(func):
+        # Get function metadata
+        func_name = func.__name__
+
+        # Use provided title or generate from function name
+        tool_title = title or func_name.replace('_', ' ').title()
+
+        # Use provided annotations or default
+        tool_annotations = annotations or ToolAnnotations(
+            readOnlyHint=True,
+            destructiveHint=False
+        )
+
+        # Store the metadata for later use by the server
+        func._mcp_title = tool_title
+        func._mcp_annotations = tool_annotations
+
+        # Register in MCP_TOOLS (existing functionality)
+        MCP_TOOLS[func_name] = func
+
+        return func
+
+    return decorator
 
 def with_header_auth(api_class, allow_mock=True):
     """
