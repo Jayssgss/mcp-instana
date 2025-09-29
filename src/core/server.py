@@ -152,16 +152,11 @@ def create_app(token: str, base_url: str, port: int = int(os.getenv("PORT", "808
                     if client and hasattr(client, tool_name):
                         bound_method = getattr(client, tool_name)
 
-                        # Check if the method has MCP metadata
-                        if hasattr(bound_method, '_mcp_title') and hasattr(bound_method, '_mcp_annotations'):
-                            # Use the stored metadata
-                            server.tool(
-                                title=bound_method._mcp_title,
-                                annotations=bound_method._mcp_annotations
-                            )(bound_method)
-                        else:
-                            # Use default registration
-                            server.tool()(bound_method)
+                        # Use the stored metadata (all tools now have metadata)
+                        server.tool(
+                            title=bound_method._mcp_title,
+                            annotations=bound_method._mcp_annotations
+                        )(bound_method)
 
                         tools_registered += 1
                         break

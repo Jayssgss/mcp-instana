@@ -13,8 +13,6 @@ import requests
 # Import MCP dependencies
 from mcp.types import ToolAnnotations
 
-from src.prompts import mcp
-
 # Registry to store all tools
 MCP_TOOLS = {}
 
@@ -192,7 +190,12 @@ def with_header_auth(api_class, allow_mock=True):
                 print(f"Error in header auth decorator: {e}", file=sys.stderr)
                 import traceback
                 traceback.print_exc(file=sys.stderr)
-                return {"error": f"Authentication error: {e!s}"}
+                # Handle the specific case where e might be a string
+                if isinstance(e, str):
+                    error_msg = f"Authentication error: {e}"
+                else:
+                    error_msg = f"Authentication error: {e!s}"
+                return {"error": error_msg}
 
         return wrapper
     return decorator
@@ -214,6 +217,8 @@ class BaseInstanaClient:
 
     async def make_request(self, endpoint: str, params: Union[Dict[str, Any], None] = None, method: str = "GET", json: Union[Dict[str, Any], None] = None) -> Dict[str, Any]:
         """Make a request to the Instana API."""
+        if endpoint is None:
+            return {"error": "Endpoint cannot be None"}
         url = f"{self.base_url}/{endpoint.lstrip('/')}"
         headers = self.get_headers()
 

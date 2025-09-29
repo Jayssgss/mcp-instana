@@ -25,6 +25,8 @@ except ImportError:
     logger.error("Failed to import event resources API", exc_info=True)
     raise
 
+from mcp.types import ToolAnnotations
+
 from src.core.utils import BaseInstanaClient, register_as_tool, with_header_auth
 
 logger = logging.getLogger(__name__)
@@ -153,7 +155,10 @@ class AgentMonitoringEventsMCPTools(BaseInstanaClient):
 
         return summary
 
-    @register_as_tool
+    @register_as_tool(
+        title="Get Event",
+        annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False)
+    )
     @with_header_auth(EventsApi)
     async def get_event(self, event_id: str, ctx=None, api_client=None) -> Dict[str, Any]:
         """
@@ -238,7 +243,10 @@ class AgentMonitoringEventsMCPTools(BaseInstanaClient):
             logger.error(f"Error in get_event: {e}", exc_info=True)
             return {"error": f"Failed to get event: {e!s}", "event_id": event_id}
 
-    @register_as_tool
+    @register_as_tool(
+        title="Get Kubernetes Info Events",
+        annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False)
+    )
     @with_header_auth(EventsApi)
     async def get_kubernetes_info_events(self,
                                          from_time: Optional[int] = None,
@@ -383,7 +391,10 @@ class AgentMonitoringEventsMCPTools(BaseInstanaClient):
                 "details": str(e)
             }
 
-    @register_as_tool
+    @register_as_tool(
+        title="Get Agent Monitoring Events",
+        annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False)
+    )
     @with_header_auth(EventsApi)
     async def get_agent_monitoring_events(self,
                                           query: Optional[str] = None,
@@ -525,7 +536,10 @@ class AgentMonitoringEventsMCPTools(BaseInstanaClient):
             }
 
 
-    @register_as_tool
+    @register_as_tool(
+        title="Get Issues",
+        annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False)
+    )
     @with_header_auth(EventsApi)
     async def get_issues(self,
                              query: Optional[str] = None,
@@ -593,7 +607,10 @@ class AgentMonitoringEventsMCPTools(BaseInstanaClient):
             logger.error(f"Error in get_issue_events: {e}", exc_info=True)
             return {"error": f"Failed to get issue events: {e!s}"}
 
-    @register_as_tool
+    @register_as_tool(
+        title="Get Incidents",
+        annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False)
+    )
     @with_header_auth(EventsApi)
     async def get_incidents(self,
                              query: Optional[str] = None,
@@ -661,7 +678,10 @@ class AgentMonitoringEventsMCPTools(BaseInstanaClient):
             logger.error(f"Error in get_incident_events: {e}", exc_info=True)
             return {"error": f"Failed to get incident events: {e!s}"}
 
-    @register_as_tool
+    @register_as_tool(
+        title="Get Changes",
+        annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False)
+    )
     @with_header_auth(EventsApi)
     async def get_changes(self,
                              query: Optional[str] = None,
@@ -729,7 +749,10 @@ class AgentMonitoringEventsMCPTools(BaseInstanaClient):
             logger.error(f"Error in get_change_events: {e}", exc_info=True)
             return {"error": f"Failed to get change events: {e!s}"}
 
-    @register_as_tool
+    @register_as_tool(
+        title="Get Events By IDs",
+        annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False)
+    )
     @with_header_auth(EventsApi)
     async def get_events_by_ids(
         self,
