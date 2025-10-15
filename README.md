@@ -1007,7 +1007,7 @@ The project uses a **two-file dependency management strategy**:
 docker build -t mcp-instana .
 
 # Build with a specific tag
-docker build -t mcp-instana:v1.0.1 .
+docker build -t mcp-instana:v1.0.0 .
 ```
 
 #### **What the Build Does**
