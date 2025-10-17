@@ -1,5 +1,6 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mcp-name: io.github.instana/mcp-instana -->
 **Table of Contents**
 
 - [MCP Server for IBM Instana](#mcp-server-for-ibm-instana)
@@ -1021,27 +1022,14 @@ docker build -t mcp-instana:v1.0.0 .
 
 #### **Basic Usage**
 ```bash
-# Run with environment variables (recommended)
-docker run -p 8080:8080 \
-  -e INSTANA_API_TOKEN=your_instana_token \
-  -e INSTANA_BASE_URL=https://your-instana-instance.instana.io \
-  mcp-instana
+# Run the container (no credentials needed in the container)
+docker run -p 8080:8080 mcp-instana
 
 # Run with custom port
-docker run -p 8081:8080 \
-  -e INSTANA_API_TOKEN=your_instana_token \
-  -e INSTANA_BASE_URL=https://your-instana-instance.instana.io \
-  mcp-instana
+docker run -p 8081:8080 mcp-instana
 ```
 
-#### **Environment Variables**
-The container requires the following environment variables:
 
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `INSTANA_API_TOKEN` | Your Instana API token | `your_instana_token` |
-| `INSTANA_BASE_URL` | Your Instana instance URL | `https://your-instana-instance.instana.io` |
-| `PORT` | Server port (optional, defaults to 8080) | `8080` |
 
 #### **Docker Compose Example**
 ```yaml
@@ -1051,9 +1039,6 @@ services:
     build: .
     ports:
       - "8080:8080"
-    environment:
-      - INSTANA_API_TOKEN=${INSTANA_API_TOKEN}
-      - INSTANA_BASE_URL=${INSTANA_BASE_URL}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import requests; requests.get('http://127.0.0.1:8080/health', timeout=5)"]
@@ -1067,7 +1052,7 @@ services:
 
 #### **Security Best Practices Implemented**
 - ✅ **Non-root user**: Container runs as `mcpuser` (not root)
-- ✅ **No hardcoded secrets**: All credentials passed via environment variables
+- ✅ **No secrets in container**: Credentials are passed via HTTP headers from clients, not stored in the container
 - ✅ **Minimal dependencies**: Only 20 essential runtime dependencies
 - ✅ **Multi-stage build**: Build tools don't make it to final image
 - ✅ **Health checks**: Built-in container health monitoring
@@ -1111,11 +1096,12 @@ docker exec -it <container_id> /bin/bash
 ### Production Deployment
 
 #### **Recommended Production Setup**
-1. **Use environment variables** for all secrets
-2. **Set up proper logging** and monitoring
-3. **Configure health checks** for container orchestration
-4. **Use container orchestration** (Kubernetes, Docker Swarm, etc.)
-5. **Implement proper backup** and disaster recovery
+1. **Run container without credentials** - The container runs in Streamable HTTP mode, so no Instana credentials are needed in the container
+2. **Configure clients with credentials** - Pass Instana credentials via HTTP headers from MCP clients (Claude Desktop, GitHub Copilot, etc.)
+3. **Set up proper logging** and monitoring
+4. **Configure health checks** for container orchestration
+5. **Use container orchestration** (Kubernetes, Docker Swarm, etc.)
+6. **Implement proper backup** and disaster recovery
 
 #### **Kubernetes Example**
 ```yaml
@@ -1138,14 +1124,6 @@ spec:
         image: mcp-instana:latest
         ports:
         - containerPort: 8080
-        env:
-        - name: INSTANA_API_TOKEN
-          valueFrom:
-            secretKeyRef:
-              name: instana-secrets
-              key: api-token
-        - name: INSTANA_BASE_URL
-          value: "https://your-instana-instance.instana.io"
         livenessProbe:
           httpGet:
             path: /health
@@ -1170,9 +1148,11 @@ spec:
 docker logs <container_id>
 
 # Common issues:
-# 1. Missing environment variables
-# 2. Port already in use
-# 3. Invalid Instana credentials
+# 1. Port already in use
+# 2. Invalid container image
+# 3. Missing dependencies
+
+# Credentials are passed via HTTP headers from the MCP client
 ```
 
 #### **Connection Issues**
