@@ -1,0 +1,77 @@
+# Windows-specific Dockerfile for mcp-instana
+# This Dockerfile creates a Windows container version of the mcp-instana server
+
+# Use Microsoft's official Python image for Windows
+FROM mcr.microsoft.com/windows/servercore:ltsc2019 AS builder
+
+# Set PowerShell as the default shell
+SHELL ["powershell", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue';"]
+
+# Install Chocolatey package manager
+RUN Set-ExecutionPolicy Bypass -Scope Process -Force; \
+    [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; \
+    iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
+
+# Install Python 3.11 using Chocolatey
+RUN choco install -y python --version=3.11.0
+
+# Add Python to PATH
+RUN $env:Path = [System.Environment]::GetEnvironmentVariable('Path', 'Machine') + ';C:\Python311;C:\Python311\Scripts'; \
+    [Environment]::SetEnvironmentVariable('Path', $env:Path, 'Machine')
+
+# Set working directory
+WORKDIR C:/app
+
+# Copy only the runtime dependency file and source code needed for the build
+COPY pyproject-runtime.toml pyproject.toml
+COPY src ./src
+COPY README.md ./
+
+# Install pip and uv
+RUN python -m pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir uv
+
+# Install only runtime dependencies using the minimal pyproject-runtime.toml
+RUN uv pip install --no-cache-dir .
+
+# Stage 2: Runtime stage
+FROM mcr.microsoft.com/windows/servercore:ltsc2019 AS runtime
+
+# Set PowerShell as the default shell
+SHELL ["powershell", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue';"]
+
+# Install Python 3.11 using Chocolatey
+RUN Set-ExecutionPolicy Bypass -Scope Process -Force; \
+    [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; \
+    iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1')) && \
+    choco install -y python --version=3.11.0
+
+# Add Python to PATH
+RUN $env:Path = [System.Environment]::GetEnvironmentVariable('Path', 'Machine') + ';C:\Python311;C:\Python311\Scripts'; \
+    [Environment]::SetEnvironmentVariable('Path', $env:Path, 'Machine')
+
+# Set working directory
+WORKDIR C:/app
+
+# Copy from builder
+COPY --from=builder C:/Python311/Lib/site-packages C:/Python311/Lib/site-packages
+COPY --from=builder C:/Python311/Scripts C:/Python311/Scripts
+
+# Copy only the source code needed for runtime
+COPY src ./src
+
+# Expose the default port (configurable via PORT env var)
+EXPOSE 8080
+
+# Set environment variables (no hardcoded secrets)
+ENV PYTHONPATH=C:/app
+ENV PYTHONUNBUFFERED=1
+ENV PORT=8080
+
+# Health check using container's internal network
+HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
+    CMD ["powershell", "-Command", "try { $response = Invoke-WebRequest -Uri 'http://127.0.0.1:8080/health' -UseBasicParsing; if ($response.StatusCode -eq 200) { exit 0 } else { exit 1 } } catch { exit 1 }"]
+
+# Run the server
+ENTRYPOINT ["python", "-m", "src.core.server"]
+CMD ["--transport", "streamable-http"]

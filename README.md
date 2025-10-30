@@ -55,6 +55,10 @@
       - [**Basic Usage**](#basic-usage)
       - [**Environment Variables**](#environment-variables)
       - [**Docker Compose Example**](#docker-compose-example)
+    - [Multi-Architecture Support](#multi-architecture-support)
+      - [**Supported Architectures**](#supported-architectures)
+      - [**Benefits of Multi-Architecture Images**](#benefits-of-multi-architecture-images)
+      - [**How It Works**](#how-it-works)
     - [Docker Security Features](#docker-security-features)
       - [**Security Best Practices Implemented**](#security-best-practices-implemented)
       - [**Image Size Optimization**](#image-size-optimization)
@@ -1001,14 +1005,38 @@ The project uses a **two-file dependency management strategy**:
 #### **Prerequisites**
 - Docker installed and running
 - Access to the project source code
+- Docker BuildKit for multi-architecture builds (enabled by default in recent Docker versions)
 
 #### **Build Command**
+
+**Single Architecture Build (Default):**
 ```bash
-# Build the optimized production image
-docker build -t mcp-instana .
+# Build for your local architecture (automatic detection)
+docker build -t mcp-instana:latest .
 
 # Build with a specific tag
 docker build -t mcp-instana:v1.0.0 .
+```
+
+**Multi-Architecture Build:**
+```bash
+# Set up Docker BuildKit builder if you haven't already
+docker buildx create --name multiarch --driver docker-container --use
+
+# Build and push a multi-architecture image to a registry
+docker buildx build --platform linux/amd64,linux/arm64 -t username/mcp-instana:latest --push .
+```
+
+**Using the Helper Script:**
+```bash
+# Make the script executable
+chmod +x build_multiarch.sh
+
+# Build for local architecture
+./build_multiarch.sh
+
+# Build and push multi-architecture image
+./build_multiarch.sh --registry username/ --push
 ```
 
 #### **What the Build Does**
@@ -1048,6 +1076,25 @@ services:
       start_period: 40s
 ```
 
+### Multi-Architecture Support
+
+The Docker image supports multiple processor architectures, making it portable across different environments:
+
+#### **Supported Architectures**
+- ✅ **amd64/x86_64**: Standard Intel/AMD processors (Windows, Linux, most cloud VMs)
+- ✅ **arm64/aarch64**: Apple Silicon (M1/M2/M3), AWS Graviton, Raspberry Pi 4, etc.
+
+#### **Benefits of Multi-Architecture Images**
+- **Cross-Platform Compatibility**: Run the same image on any supported architecture
+- **Seamless Deployment**: No need to build different images for different environments
+- **CI/CD Simplification**: Build once, deploy anywhere
+- **Cloud Flexibility**: Switch between cloud providers and instance types without rebuilding images
+
+#### **How It Works**
+1. The multi-architecture image is a "manifest list" containing images for each architecture
+2. When you pull the image, Docker automatically selects the correct architecture for your system
+3. The image runs natively on your architecture without emulation, ensuring optimal performance
+
 ### Docker Security Features
 
 #### **Security Best Practices Implemented**
@@ -1057,6 +1104,7 @@ services:
 - ✅ **Multi-stage build**: Build tools don't make it to final image
 - ✅ **Health checks**: Built-in container health monitoring
 - ✅ **Optimized base image**: Uses `python:3.11-slim`
+- ✅ **Multi-architecture support**: Run natively on any supported platform
 
 #### **Image Size Optimization**
 - **Original approach**: 95+ dependencies → ~1-2GB+ image
