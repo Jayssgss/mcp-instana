@@ -1,5 +1,63 @@
+# Multi-platform Dockerfile for creating platform-independent images
+#
+# This Dockerfile supports multiple platforms:
+# - Linux AMD64 (x86_64): Standard Intel/AMD processors on Linux
+# - Linux ARM64 (aarch64): Apple Silicon, AWS Graviton, Raspberry Pi 4
+# 
+# Note: Windows support has been removed as the python:3.11-slim image
+# is not available for Windows platforms
+#
+# To create a multi-architecture image that works on any platform:
+#
+# 1. Set up Docker BuildKit builder if you haven't already:
+#    docker buildx create --name multiarch --driver docker-container --use
+#
+# 2. Build and push a multi-architecture image to a registry:
+#    docker buildx build --platform linux/amd64,linux/arm64 -t username/mcp-instana:latest --push .
+#
+# 3. Pull and run the image on any platform:
+#    docker pull username/mcp-instana:latest
+#    docker run -p 8080:8080 username/mcp-instana:latest
+#
+# The image will automatically use the correct architecture version for the host system.
+#
+# Note: The --push flag is required for multi-architecture builds as Docker needs to
+# create a manifest list in a registry. If you want to load the image locally for testing,
+# you can only build for your current architecture:
+#    docker buildx build --platform linux/amd64 -t mcp-instana:latest --load .
+#
+# For CI/CD pipelines (e.g., GitHub Actions):
+# ```yaml
+# jobs:
+#   build-push:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Checkout code
+#         uses: actions/checkout@v3
+#       
+#       - name: Set up QEMU
+#         uses: docker/setup-qemu-action@v2
+#       
+#       - name: Set up Docker Buildx
+#         uses: docker/setup-buildx-action@v2
+#       
+#       - name: Login to DockerHub
+#         uses: docker/login-action@v2
+#         with:
+#           username: ${{ secrets.DOCKERHUB_USERNAME }}
+#           password: ${{ secrets.DOCKERHUB_TOKEN }}
+#       
+#       - name: Build and push
+#         uses: docker/build-push-action@v4
+#         with:
+#           context: .
+#           platforms: linux/amd64,linux/arm64
+#           push: true
+#           tags: username/mcp-instana:latest
+# ```
+#
 # Stage 1: Build stage with minimal runtime dependencies
-FROM docker.io/library/python:3.11-slim AS builder
+FROM --platform=${BUILDPLATFORM:-linux/arm64} docker.io/library/python:3.11-slim AS builder
 
 # Install system dependencies needed for building
 RUN apt-get update && apt-get install -y --no-install-recommends \
