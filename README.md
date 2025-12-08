@@ -30,6 +30,7 @@
     - [Claude Desktop](#claude-desktop)
       - [Streamable HTTP Mode](#streamable-http-mode)
       - [Stdio Mode](#stdio-mode)
+    - [Kiro Setup](#kiro-setup)
     - [GitHub Copilot](#github-copilot)
       - [Streamable HTTP Mode](#streamable-http-mode-1)
       - [Stdio Mode](#stdio-mode-1)
@@ -476,6 +477,44 @@ get me all endpoints from Instana
   }
 }
 ```
+### Kiro Setup
+
+Kiro is an agentic IDE, not an extension that can be downloaded into VS Code or some other IDE.
+
+**Step 1: Download and install Kiro for your operating system from https://kiro.dev/.**
+
+**Step 2: After installation, launch Kiro and open any project in the IDE.**
+![alt text](./images/open-kiro.png)
+
+**Step 3: Click the Kiro (Ghost) icon on the left sidebar to access Kiro's features.**
+![alt text](./images/kiro-features.png)
+
+**Step 4: Select the Edit Config icon in the top right corner of the MCP Servers section.**
+![alt text](./images/edir-kiro-config.png)
+
+**Step 5: Open the MCP server configuration file (mcp.json), similar to how it works in Claude, and update it with your server's name, commands, and headers as shown in the image below.**
+
+```json
+{
+  "mcpServers": {
+    "Instana MCP Server": {
+      "command": "npx",
+      "args": [
+        "mcp-remote", "<YOUR_MCP_PORT>/mcp",
+        "--allow-http",
+        "--header", "instana-base-url: <INSTANA_BASE_URL>",
+        "--header", "instana-api-token: <INSTANA_API_TOKEN>"
+      ]
+    }
+  }
+}
+```
+
+**Step 6: After saving the file, Click the Enable MCP button and you'll see your MCP server and its available tools appear in the bottom-left section of Kiro.**
+![alt text](./images/enable-kiro-mcp.png)
+
+**Step 7: Go to the AI Chat panel, enter a prompt related to your MCP server, and view the response directly within Kiro.**
+![alt text](./images/kiro-prompt.png)
 
 ### GitHub Copilot
 
@@ -592,11 +631,11 @@ Here is an example of a GitHub Copilot response:
 ## Supported Features
 
 - [ ] Application
-  - [ ] Application Metrics
-    - [ ] Application Metrics
-    - [ ] Endpoint Metrics
-    - [ ] Service Metrics
-    - [ ] Data Metrics
+  - [x] Application Metrics
+    - [x] Application Metrics
+    - [x] Endpoint Metrics
+    - [x] Service Metrics
+    - [x] Data Metrics
   - [x] Application Resources
     - [x] Get Applications Endpoints
     - [x] Get Applications
@@ -606,10 +645,10 @@ Here is an example of a GitHub Copilot response:
     - [x] Get All Smart Alert Configurations
     - [x] Get Smart Alert Configuration
     - [x] Get Smart Alert Config Versions
-    - [ ] Create Smart Alert Configuration
-    - [ ] Update Smart Alert Configuration
+    - [x] Create Smart Alert Configuration
+    - [x] Update Smart Alert Configuration
     - [x] Delete Smart Alert Configuration
-    - [ ] Recalculate Smart Alert Config Baseline
+    - [x] Recalculate Smart Alert Config Baseline
     - [x] Enable Application Alert Config
     - [x] Disable Smart Alert Config
     - [x] Restore Smart Alert Config
@@ -617,7 +656,7 @@ Here is an example of a GitHub Copilot response:
   - [ ] Infrastructure Analyze
     - [x] Get Available Metrics
     - [ ] Get infrastructure entities
-    - [ ] Get grouped entities with aggregated metrics
+    - [x] Get grouped entities with aggregated metrics
     - [x] Get available plugins/entity types
   - [x] Infrastructure Catalog
     - [x] Get Payload Keys By plugin ID
@@ -628,12 +667,12 @@ Here is an example of a GitHub Copilot response:
     - [x] Get Infrastructure Catalog Search Fields with Custom Metrics
     - [x] Get Tag Catalog
     - [x] Get Tag Catalog ALL
-  - [ ] Infrastructure Resources
+  - [x] Infrastructure Resources
     - [x] Get Monitoring State
-    - [ ] Get plugin Payload
     - [x] Search Snapshots
     - [x] Get Snapshot Details for single Snapshot ID
     - [x] Get Details for Multiple Snapshot IDs
+    - [x] Search and discover snapshots based on search criteria
     - [x] Software Versions
   - [x] Infrastructure Topology
     - [x] Get Hosts for Snapshot
@@ -647,6 +686,27 @@ Here is an example of a GitHub Copilot response:
       - [x] Get Issues
       - [x] Get Incidents
       - [x] Get Changes
+- [x] Automation
+ - [x] Action Catalog
+   - [x] Get Action Matches
+   - [x] Get Actions
+   - [x] Get Action Details
+   - [x] Get Action Types
+   - [x] Get Action Tags
+ - [x] Action History
+   - [x] Submit Automation Action
+   - [x] Get Action Instance Details
+   - [x] List Action Instances
+   - [x] Delete Action Instance
+- [x] Settings
+ - [x] Custom Dashboard
+   - [x] Get Custom Dashboards
+   - [x] Get Custom Dashboard
+   - [x] Add Custom Dashboard
+   - [x] Update Custom Dashboard
+   - [x] Delete Custom Dashboard
+   - [x] Get Shareable Users
+   - [x] Get Shareable API Tokens
 
 ## Available Tools
 
@@ -696,6 +756,22 @@ Here is an example of a GitHub Copilot response:
 | `get_incidents`                                               | Events                         | Get Incidents                                          |
 | `get_changes`                                                 | Events                         | Get Changes                                            |
 | `get_events_by_ids`                                           | Events                         | Get Events by IDs                                      |
+| `get_action_matches`                                          | Automation (Action Catalog)    | Get action matches for a given action search space     |
+| `get_actions`                                                 | Automation (Action Catalog)    | Get a list of available automation actions             |
+| `get_action_details`                                          | Automation (Action Catalog)    | Get detailed information about a specific action       |
+| `get_action_types`                                            | Automation (Action Catalog)    | Get a list of available action types                   |
+| `get_action_tags`                                             | Automation (Action Catalog)    | Get a list of available action tags                    |
+| `submit_automation_action`                                    | Automation (Action History)    | Submit an automation action for execution              |
+| `get_action_instance_details`                                 | Automation (Action History)    | Get details of an automation action run result         |
+| `list_action_instances`                                       | Automation (Action History)    | Get details of automation action run results           |
+| `delete_action_instance`                                      | Automation (Action History)    | Delete an automation action run result                 |
+| `get_custom_dashboards`                                       | Settings (Custom Dashboard)    | Get all custom dashboards                              |
+| `get_custom_dashboard`                                        | Settings (Custom Dashboard)    | Get a specific custom dashboard by ID                  |
+| `add_custom_dashboard`                                        | Settings (Custom Dashboard)    | Add a new custom dashboard                             |
+| `update_custom_dashboard`                                     | Settings (Custom Dashboard)    | Update an existing custom dashboard                    |
+| `delete_custom_dashboard`                                     | Settings (Custom Dashboard)    | Delete a custom dashboard                              |
+| `get_shareable_users`                                         | Settings (Custom Dashboard)    | Get shareable users for a custom dashboard             |
+| `get_shareable_api_tokens`                                    | Settings (Custom Dashboard)    | Get shareable API tokens for a custom dashboard        |
 
 
 ## Tool Filtering
@@ -733,6 +809,9 @@ The MCP server supports selective tool loading to optimize performance and reduc
   - Website Catalog: Website metadata and definitions
   - Website Analyze: Website performance analysis
   - Website Configuration: Website configuration management
+
+- **`settings`**: Settings and configuration tools
+  - Custom Dashboard: Custom dashboard management and sharing
 
 ### Usage Examples
 
