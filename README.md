@@ -218,7 +218,7 @@ uv run src/core/server.py [OPTIONS]
 - `--transport <mode>`: Transport mode (choices: `streamable-http`, `stdio`)
 - `--debug`: Enable debug mode with additional logging
 - `--log-level <level>`: Set the logging level (choices: `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`)
-- `--tools <categories>`: Comma-separated list of tool categories to enable (e.g., infra,app,events,automation,website). Enabling a category will also enable its related prompts. For example: `--tools infra` enables the infra tools and all infra-related prompts.
+- `--tools <categories>`: Comma-separated list of tool categories to enable (e.g., infra,app,events,website). Enabling a category will also enable its related prompts. For example: `--tools infra` enables the infra tools and all infra-related prompts.
 - `--list-tools`: List all available tool categories and exit
 - `--port <port>`: Port to listen on (default: 8080)
 - `--help`: Show help message and exit
@@ -339,7 +339,6 @@ uv run src/core/server.py --transport streamable-http --tools events
 - **`infra`**: Infrastructure monitoring tools and prompts (resources, catalog, topology, analyze, metrics)
 - **`app`**: Application performance tools and prompts (resources, metrics, alerts, catalog, topology, analyze, settings, global alerts)
 - **`events`**: Event monitoring tools and prompts (Kubernetes events, agent monitoring)
-- **`automation`**: Automation-related tools and prompts (action catalog, action history)
 - **`website`**: Website monitoring tools and prompts (metrics, catalog, analyze, configuration)
 
 ### Verifying Server Status
@@ -686,27 +685,31 @@ Here is an example of a GitHub Copilot response:
       - [x] Get Issues
       - [x] Get Incidents
       - [x] Get Changes
-- [x] Automation
- - [x] Action Catalog
-   - [x] Get Action Matches
-   - [x] Get Actions
-   - [x] Get Action Details
-   - [x] Get Action Types
-   - [x] Get Action Tags
- - [x] Action History
-   - [x] Submit Automation Action
-   - [x] Get Action Instance Details
-   - [x] List Action Instances
-   - [x] Delete Action Instance
-- [x] Settings
- - [x] Custom Dashboard
-   - [x] Get Custom Dashboards
-   - [x] Get Custom Dashboard
-   - [x] Add Custom Dashboard
-   - [x] Update Custom Dashboard
-   - [x] Delete Custom Dashboard
-   - [x] Get Shareable Users
-   - [x] Get Shareable API Tokens
+- [x] Website
+  - [x] Website Metrics
+    - [ ] Get Website Page Load
+    - [x] Get Website Beacon Metrics V2
+  - [x] Website Catalog
+    - [x] Get Website Catalog Metrics
+    - [x] Get Website Catalog Tags
+    - [ ] Get Website Tag Catalog
+  - [x] Website Analyze
+    - [x] Get Website Beacon Groups
+    - [x] Get Website Beacons
+  - [x] Website Configuration
+    - [x] Get Websites
+    - [x] Get Website
+    - [x] Create Website
+    - [x] Delete Website
+    - [x] Rename Website
+    - [x] Get Website Geo Location 
+    - [x] Update Website Geo Location 
+    - [x] Get Website IP Masking 
+    - [x] Update Website IP Masking 
+    - [x] Get Website Geo Mapping Rules
+    - [ ] Set Website Geo Mapping Rules
+    - [ ] Upload Source Map File
+    - [ ] Clear Source Map Upload 
 
 ## Available Tools
 
@@ -756,22 +759,26 @@ Here is an example of a GitHub Copilot response:
 | `get_incidents`                                               | Events                         | Get Incidents                                          |
 | `get_changes`                                                 | Events                         | Get Changes                                            |
 | `get_events_by_ids`                                           | Events                         | Get Events by IDs                                      |
-| `get_action_matches`                                          | Automation (Action Catalog)    | Get action matches for a given action search space     |
-| `get_actions`                                                 | Automation (Action Catalog)    | Get a list of available automation actions             |
-| `get_action_details`                                          | Automation (Action Catalog)    | Get detailed information about a specific action       |
-| `get_action_types`                                            | Automation (Action Catalog)    | Get a list of available action types                   |
-| `get_action_tags`                                             | Automation (Action Catalog)    | Get a list of available action tags                    |
-| `submit_automation_action`                                    | Automation (Action History)    | Submit an automation action for execution              |
-| `get_action_instance_details`                                 | Automation (Action History)    | Get details of an automation action run result         |
-| `list_action_instances`                                       | Automation (Action History)    | Get details of automation action run results           |
-| `delete_action_instance`                                      | Automation (Action History)    | Delete an automation action run result                 |
-| `get_custom_dashboards`                                       | Settings (Custom Dashboard)    | Get all custom dashboards                              |
-| `get_custom_dashboard`                                        | Settings (Custom Dashboard)    | Get a specific custom dashboard by ID                  |
-| `add_custom_dashboard`                                        | Settings (Custom Dashboard)    | Add a new custom dashboard                             |
-| `update_custom_dashboard`                                     | Settings (Custom Dashboard)    | Update an existing custom dashboard                    |
-| `delete_custom_dashboard`                                     | Settings (Custom Dashboard)    | Delete a custom dashboard                              |
-| `get_shareable_users`                                         | Settings (Custom Dashboard)    | Get shareable users for a custom dashboard             |
-| `get_shareable_api_tokens`                                    | Settings (Custom Dashboard)    | Get shareable API tokens for a custom dashboard        |
+| `get_website_page_load`                                       | Website Metrics                | Get website monitoring beacons for a specific page load|
+| `get_website_beacon_metrics_v2`                               | Website Metrics                | Get website beacon metrics using the v2 API            |
+| `get_website_catalog_metrics`                                 | Website Catalog                | Get website monitoring metrics catalog                 |
+| `get_website_catalog_tags`                                    | Website Catalog                | Get website monitoring tags catalog                    |
+| `get_website_tag_catalog`                                     | Website Catalog                | Get website monitoring tag catalog                     |
+| `get_website_beacon_groups`                                   | Website Analyze                | Get grouped website beacon metrics                     |
+| `get_website_beacons`                                         | Website Analyze                | Get all website beacon metrics                         |
+| `get_websites`                                                | Website Configuration          | Get all websites                                       |
+| `get_website`                                                 | Website Configuration          | Get a specific website by ID                           |
+| `create_website`                                              | Website Configuration          | Create a new website configuration                     |
+| `delete_website`                                              | Website Configuration          | Delete a website configuration                         |
+| `rename_website`                                              | Website Configuration          | Rename a website configuration                         |
+| `get_website_geo_location_configuration`                      | Website Configuration          | Get geo-location configuration for a website           |
+| `update_website_geo_location_configuration`                   | Website Configuration          | Update geo-location configuration for a website        |
+| `get_website_ip_masking_configuration`                        | Website Configuration          | Get IP masking configuration for a website             |
+| `update_website_ip_masking_configuration`                     | Website Configuration          | Update IP masking configuration for a website          |
+| `get_website_geo_mapping_rules`                               | Website Configuration          | Get custom geo mapping rules for website               |
+| `set_website_geo_mapping_rules`                               | Website Configuration          | Set custom geo mapping rules for website               |
+| `upload_source_map_file`                                      | Website Configuration          | Upload source map file for a website                   |
+| `clear_source_map_upload_configuration`                       | Website Configuration          | Clear source map upload configuration for a website    |
 
 
 ## Tool Filtering
@@ -800,18 +807,11 @@ The MCP server supports selective tool loading to optimize performance and reduc
 - **`events`**: Event monitoring tools
   - Events: Kubernetes events, agent monitoring, incidents, issues, changes and system event tracking
 
-- **`automation`**: Automation-related tools
-  - Action Catalog: Automation action discovery and management
-  - Action History: Tracking and managing automation action history
-
 - **`website`**: Website monitoring tools
   - Website Metrics: Performance measurement for websites
   - Website Catalog: Website metadata and definitions
   - Website Analyze: Website performance analysis
   - Website Configuration: Website configuration management
-
-- **`settings`**: Settings and configuration tools
-  - Custom Dashboard: Custom dashboard management and sharing
 
 ### Usage Examples
 
@@ -824,8 +824,8 @@ mcp-instana --tools infra,events --transport streamable-http
 # Enable only application tools
 mcp-instana --tools app --transport streamable-http
 
-# Enable automation and website tools
-mcp-instana --tools automation,website --transport streamable-http
+# Enable events and website tools
+mcp-instana --tools events,website --transport streamable-http
 
 # Enable all tools (default behavior)
 mcp-instana --transport streamable-http
@@ -843,8 +843,8 @@ uv run src/core/server.py --tools infra,events --transport streamable-http
 # Enable only application tools
 uv run src/core/server.py --tools app --transport streamable-http
 
-# Enable automation and website tools
-uv run src/core/server.py --tools automation,website --transport streamable-http
+# Enable events and website tools
+uv run src/core/server.py --tools events,website --transport streamable-http
 
 # Enable all tools (default behavior)
 uv run src/core/server.py --transport streamable-http
