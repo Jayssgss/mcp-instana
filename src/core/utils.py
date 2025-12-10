@@ -13,6 +13,14 @@ import requests
 # Import MCP dependencies
 from mcp.types import ToolAnnotations
 
+# Import for getting package version from meta data rather than server.py
+try:
+    from importlib.metadata import version
+    __version__ = version("mcp-instana")
+except Exception:
+    # Fallback version if package metadata is not available
+    __version__ = "0.3.1"
+
 # Registry to store all tools
 MCP_TOOLS = {}
 
@@ -128,6 +136,9 @@ def with_header_auth(api_class, allow_mock=True):
                         configuration.default_headers = {"User-Agent": "MCP-server/0.1.0"}
 
                         api_client_instance = ApiClient(configuration=configuration)
+                        user_agent_value = f"MCP-server/{__version__}"
+                        api_client_instance.set_default_header("User-Agent", user_agent_value)
+                        print(f"✅ Set User-Agent header: {user_agent_value}", file=sys.stderr)
                         api_instance = api_class(api_client=api_client_instance)
 
                         # Add the API instance to kwargs so the decorated function can use it
@@ -178,9 +189,12 @@ def with_header_auth(api_class, allow_mock=True):
                     configuration.host = self.base_url
                     configuration.api_key['ApiKeyAuth'] = self.read_token
                     configuration.api_key_prefix['ApiKeyAuth'] = 'apiToken'
-                    configuration.default_headers = {"User-Agent": "MCP-server/0.1.0"}
-
                     api_client_instance = ApiClient(configuration=configuration)
+                    # Set User-Agent header instead of User-Agent
+                    user_agent_value = f"MCP-server/{__version__}"
+                    # Add custom tracking headers
+                    api_client_instance.set_default_header("User-Agent", user_agent_value)
+                    print(f"✅ Set User-Agent header: {user_agent_value}", file=sys.stderr)
                     api_instance = api_class(api_client=api_client_instance)
 
                     kwargs['api_client'] = api_instance
@@ -212,7 +226,8 @@ class BaseInstanaClient:
         return {
             "Authorization": f"apiToken {self.read_token}",
             "Content-Type": "application/json",
-            "Accept": "application/json"
+            "Accept": "application/json",
+            "User-Agent": f"MCP-server/{__version__}",
         }
 
     async def make_request(self, endpoint: str, params: Union[Dict[str, Any], None] = None, method: str = "GET", json: Union[Dict[str, Any], None] = None) -> Dict[str, Any]:
