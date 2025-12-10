@@ -1,5 +1,10 @@
 # Changelog
 
+### 0.6.1
+
+-   **Chore:** Updated README with Website Tools documentation.
+-   **Chore:** Added KIRO setup instructions to README.
+
 ### 0.6.0
 
 -   **Fix:** Improved accuracy across Application, Infrastructure, and

@@ -30,6 +30,7 @@
     - [Claude Desktop](#claude-desktop)
       - [Streamable HTTP Mode](#streamable-http-mode)
       - [Stdio Mode](#stdio-mode)
+    - [Kiro Setup](#kiro-setup)
     - [GitHub Copilot](#github-copilot)
       - [Streamable HTTP Mode](#streamable-http-mode-1)
       - [Stdio Mode](#stdio-mode-1)
@@ -217,7 +218,7 @@ uv run src/core/server.py [OPTIONS]
 - `--transport <mode>`: Transport mode (choices: `streamable-http`, `stdio`)
 - `--debug`: Enable debug mode with additional logging
 - `--log-level <level>`: Set the logging level (choices: `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`)
-- `--tools <categories>`: Comma-separated list of tool categories to enable (e.g., infra,app,events,automation,website). Enabling a category will also enable its related prompts. For example: `--tools infra` enables the infra tools and all infra-related prompts.
+- `--tools <categories>`: Comma-separated list of tool categories to enable (e.g., infra,app,events,website). Enabling a category will also enable its related prompts. For example: `--tools infra` enables the infra tools and all infra-related prompts.
 - `--list-tools`: List all available tool categories and exit
 - `--port <port>`: Port to listen on (default: 8080)
 - `--help`: Show help message and exit
@@ -338,7 +339,6 @@ uv run src/core/server.py --transport streamable-http --tools events
 - **`infra`**: Infrastructure monitoring tools and prompts (resources, catalog, topology, analyze, metrics)
 - **`app`**: Application performance tools and prompts (resources, metrics, alerts, catalog, topology, analyze, settings, global alerts)
 - **`events`**: Event monitoring tools and prompts (Kubernetes events, agent monitoring)
-- **`automation`**: Automation-related tools and prompts (action catalog, action history)
 - **`website`**: Website monitoring tools and prompts (metrics, catalog, analyze, configuration)
 
 ### Verifying Server Status
@@ -476,6 +476,44 @@ get me all endpoints from Instana
   }
 }
 ```
+### Kiro Setup
+
+Kiro is an agentic IDE, not an extension that can be downloaded into VS Code or some other IDE.
+
+**Step 1: Download and install Kiro for your operating system from https://kiro.dev/.**
+
+**Step 2: After installation, launch Kiro and open any project in the IDE.**
+![alt text](./images/open-kiro.png)
+
+**Step 3: Click the Kiro (Ghost) icon on the left sidebar to access Kiro's features.**
+![alt text](./images/kiro-features.png)
+
+**Step 4: Select the Edit Config icon in the top right corner of the MCP Servers section.**
+![alt text](./images/edir-kiro-config.png)
+
+**Step 5: Open the MCP server configuration file (mcp.json), similar to how it works in Claude, and update it with your server's name, commands, and headers as shown in the image below.**
+
+```json
+{
+  "mcpServers": {
+    "Instana MCP Server": {
+      "command": "npx",
+      "args": [
+        "mcp-remote", "<YOUR_MCP_PORT>/mcp",
+        "--allow-http",
+        "--header", "instana-base-url: <INSTANA_BASE_URL>",
+        "--header", "instana-api-token: <INSTANA_API_TOKEN>"
+      ]
+    }
+  }
+}
+```
+
+**Step 6: After saving the file, Click the Enable MCP button and you'll see your MCP server and its available tools appear in the bottom-left section of Kiro.**
+![alt text](./images/enable-kiro-mcp.png)
+
+**Step 7: Go to the AI Chat panel, enter a prompt related to your MCP server, and view the response directly within Kiro.**
+![alt text](./images/kiro-prompt.png)
 
 ### GitHub Copilot
 
@@ -592,11 +630,11 @@ Here is an example of a GitHub Copilot response:
 ## Supported Features
 
 - [ ] Application
-  - [ ] Application Metrics
-    - [ ] Application Metrics
-    - [ ] Endpoint Metrics
-    - [ ] Service Metrics
-    - [ ] Data Metrics
+  - [x] Application Metrics
+    - [x] Application Metrics
+    - [x] Endpoint Metrics
+    - [x] Service Metrics
+    - [x] Data Metrics
   - [x] Application Resources
     - [x] Get Applications Endpoints
     - [x] Get Applications
@@ -606,10 +644,10 @@ Here is an example of a GitHub Copilot response:
     - [x] Get All Smart Alert Configurations
     - [x] Get Smart Alert Configuration
     - [x] Get Smart Alert Config Versions
-    - [ ] Create Smart Alert Configuration
-    - [ ] Update Smart Alert Configuration
+    - [x] Create Smart Alert Configuration
+    - [x] Update Smart Alert Configuration
     - [x] Delete Smart Alert Configuration
-    - [ ] Recalculate Smart Alert Config Baseline
+    - [x] Recalculate Smart Alert Config Baseline
     - [x] Enable Application Alert Config
     - [x] Disable Smart Alert Config
     - [x] Restore Smart Alert Config
@@ -617,7 +655,7 @@ Here is an example of a GitHub Copilot response:
   - [ ] Infrastructure Analyze
     - [x] Get Available Metrics
     - [ ] Get infrastructure entities
-    - [ ] Get grouped entities with aggregated metrics
+    - [x] Get grouped entities with aggregated metrics
     - [x] Get available plugins/entity types
   - [x] Infrastructure Catalog
     - [x] Get Payload Keys By plugin ID
@@ -628,12 +666,12 @@ Here is an example of a GitHub Copilot response:
     - [x] Get Infrastructure Catalog Search Fields with Custom Metrics
     - [x] Get Tag Catalog
     - [x] Get Tag Catalog ALL
-  - [ ] Infrastructure Resources
+  - [x] Infrastructure Resources
     - [x] Get Monitoring State
-    - [ ] Get plugin Payload
     - [x] Search Snapshots
     - [x] Get Snapshot Details for single Snapshot ID
     - [x] Get Details for Multiple Snapshot IDs
+    - [x] Search and discover snapshots based on search criteria
     - [x] Software Versions
   - [x] Infrastructure Topology
     - [x] Get Hosts for Snapshot
@@ -647,6 +685,31 @@ Here is an example of a GitHub Copilot response:
       - [x] Get Issues
       - [x] Get Incidents
       - [x] Get Changes
+- [x] Website
+  - [x] Website Metrics
+    - [ ] Get Website Page Load
+    - [x] Get Website Beacon Metrics V2
+  - [x] Website Catalog
+    - [x] Get Website Catalog Metrics
+    - [x] Get Website Catalog Tags
+    - [ ] Get Website Tag Catalog
+  - [x] Website Analyze
+    - [x] Get Website Beacon Groups
+    - [x] Get Website Beacons
+  - [x] Website Configuration
+    - [x] Get Websites
+    - [x] Get Website
+    - [x] Create Website
+    - [x] Delete Website
+    - [x] Rename Website
+    - [x] Get Website Geo Location 
+    - [x] Update Website Geo Location 
+    - [x] Get Website IP Masking 
+    - [x] Update Website IP Masking 
+    - [x] Get Website Geo Mapping Rules
+    - [ ] Set Website Geo Mapping Rules
+    - [ ] Upload Source Map File
+    - [ ] Clear Source Map Upload 
 
 ## Available Tools
 
@@ -696,6 +759,26 @@ Here is an example of a GitHub Copilot response:
 | `get_incidents`                                               | Events                         | Get Incidents                                          |
 | `get_changes`                                                 | Events                         | Get Changes                                            |
 | `get_events_by_ids`                                           | Events                         | Get Events by IDs                                      |
+| `get_website_page_load`                                       | Website Metrics                | Get website monitoring beacons for a specific page load|
+| `get_website_beacon_metrics_v2`                               | Website Metrics                | Get website beacon metrics using the v2 API            |
+| `get_website_catalog_metrics`                                 | Website Catalog                | Get website monitoring metrics catalog                 |
+| `get_website_catalog_tags`                                    | Website Catalog                | Get website monitoring tags catalog                    |
+| `get_website_tag_catalog`                                     | Website Catalog                | Get website monitoring tag catalog                     |
+| `get_website_beacon_groups`                                   | Website Analyze                | Get grouped website beacon metrics                     |
+| `get_website_beacons`                                         | Website Analyze                | Get all website beacon metrics                         |
+| `get_websites`                                                | Website Configuration          | Get all websites                                       |
+| `get_website`                                                 | Website Configuration          | Get a specific website by ID                           |
+| `create_website`                                              | Website Configuration          | Create a new website configuration                     |
+| `delete_website`                                              | Website Configuration          | Delete a website configuration                         |
+| `rename_website`                                              | Website Configuration          | Rename a website configuration                         |
+| `get_website_geo_location_configuration`                      | Website Configuration          | Get geo-location configuration for a website           |
+| `update_website_geo_location_configuration`                   | Website Configuration          | Update geo-location configuration for a website        |
+| `get_website_ip_masking_configuration`                        | Website Configuration          | Get IP masking configuration for a website             |
+| `update_website_ip_masking_configuration`                     | Website Configuration          | Update IP masking configuration for a website          |
+| `get_website_geo_mapping_rules`                               | Website Configuration          | Get custom geo mapping rules for website               |
+| `set_website_geo_mapping_rules`                               | Website Configuration          | Set custom geo mapping rules for website               |
+| `upload_source_map_file`                                      | Website Configuration          | Upload source map file for a website                   |
+| `clear_source_map_upload_configuration`                       | Website Configuration          | Clear source map upload configuration for a website    |
 
 
 ## Tool Filtering
@@ -724,10 +807,6 @@ The MCP server supports selective tool loading to optimize performance and reduc
 - **`events`**: Event monitoring tools
   - Events: Kubernetes events, agent monitoring, incidents, issues, changes and system event tracking
 
-- **`automation`**: Automation-related tools
-  - Action Catalog: Automation action discovery and management
-  - Action History: Tracking and managing automation action history
-
 - **`website`**: Website monitoring tools
   - Website Metrics: Performance measurement for websites
   - Website Catalog: Website metadata and definitions
@@ -745,8 +824,8 @@ mcp-instana --tools infra,events --transport streamable-http
 # Enable only application tools
 mcp-instana --tools app --transport streamable-http
 
-# Enable automation and website tools
-mcp-instana --tools automation,website --transport streamable-http
+# Enable events and website tools
+mcp-instana --tools events,website --transport streamable-http
 
 # Enable all tools (default behavior)
 mcp-instana --transport streamable-http
@@ -764,8 +843,8 @@ uv run src/core/server.py --tools infra,events --transport streamable-http
 # Enable only application tools
 uv run src/core/server.py --tools app --transport streamable-http
 
-# Enable automation and website tools
-uv run src/core/server.py --tools automation,website --transport streamable-http
+# Enable events and website tools
+uv run src/core/server.py --tools events,website --transport streamable-http
 
 # Enable all tools (default behavior)
 uv run src/core/server.py --transport streamable-http
