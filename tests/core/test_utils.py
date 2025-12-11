@@ -3,18 +3,23 @@ Unit tests for the BaseInstanaClient class
 """
 
 import asyncio
+import importlib
 import os
 import sys
 import unittest
 from unittest.mock import MagicMock, patch
 
+from requests.exceptions import HTTPError, RequestException
+
 # Add the project root to the Python path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
 
 # Import the class to test
+import src.core.utils
 from src.core.utils import (
     MCP_TOOLS,
     BaseInstanaClient,
+    __version__,
     register_as_tool,
     with_header_auth,
 )
@@ -305,7 +310,6 @@ class TestBaseInstanaClient(unittest.TestCase):
     def test_make_request_http_error(self, mock_get):
         """Test make_request handling of HTTP errors"""
         # Set up the mock to raise an HTTPError
-        from requests.exceptions import HTTPError
         mock_response = MagicMock()
         mock_response.raise_for_status.side_effect = HTTPError("404 Client Error")
         mock_get.return_value = mock_response
@@ -322,7 +326,6 @@ class TestBaseInstanaClient(unittest.TestCase):
     def test_make_request_request_exception(self, mock_get):
         """Test make_request handling of request exceptions"""
         # Set up the mock to raise a RequestException
-        from requests.exceptions import RequestException
         mock_get.side_effect = RequestException("Connection error")
 
         # Call the method
@@ -749,6 +752,67 @@ class TestBaseInstanaClient(unittest.TestCase):
         self.assertEqual(headers["Authorization"], f"apiToken {whitespace_token}")
         self.assertEqual(headers["Content-Type"], "application/json")
         self.assertEqual(headers["Accept"], "application/json")
+
+
+class TestVersionImport(unittest.TestCase):
+    """Test the __version__ variable import logic"""
+
+    def test_version_is_string(self):
+        """Test that __version__ is a string"""
+        self.assertIsInstance(__version__, str)
+
+    def test_version_not_empty(self):
+        """Test that __version__ is not empty"""
+        self.assertGreater(len(__version__), 0)
+
+    def test_version_format(self):
+        """Test that __version__ follows semantic versioning format (X.Y.Z)"""
+        # Version should be in format like "0.3.1" or "1.0.0"
+        parts = __version__.split('.')
+        self.assertGreaterEqual(len(parts), 2, "Version should have at least major.minor")
+        # Check that parts are numeric (or contain numeric values)
+        for part in parts[:3]:  # Check first 3 parts (major.minor.patch)
+            # Remove any non-numeric suffixes like "-alpha", "-beta"
+            numeric_part = part.split('-')[0]
+            self.assertTrue(numeric_part.isdigit(), f"Version part '{numeric_part}' should be numeric")
+
+    @patch('importlib.metadata.version')
+    def test_version_from_metadata_success(self, mock_version):
+        """Test successful version retrieval from package metadata"""
+        # Mock the version function to return a test version
+        mock_version.return_value = "1.2.3"
+
+        # Re-import to trigger the version logic
+        importlib.reload(src.core.utils)
+
+        # Check that the version was set correctly
+        self.assertEqual(src.core.utils.__version__, "1.2.3")
+
+    @patch('importlib.metadata.version')
+    def test_version_fallback_on_exception(self, mock_version):
+        """Test fallback version when package metadata is not available"""
+        # Mock the version function to raise an exception
+        mock_version.side_effect = Exception("Package not found")
+
+        # Re-import to trigger the version logic
+        importlib.reload(src.core.utils)
+
+        # Check that the fallback version was used
+        self.assertEqual(src.core.utils.__version__, "0.3.1")
+
+    def test_version_used_in_headers(self):
+        """Test that __version__ is used in User-Agent headers"""
+        # Re-import to get the current version
+        importlib.reload(src.core.utils)
+        current_version = src.core.utils.__version__
+
+        client = BaseInstanaClient(read_token="test_token", base_url="https://test.instana.io")
+        headers = client.get_headers()
+
+        # Check that User-Agent header contains the version
+        self.assertIn("User-Agent", headers)
+        self.assertIn(current_version, headers["User-Agent"])
+        self.assertEqual(headers["User-Agent"], f"MCP-server/{current_version}")
 
 
 if __name__ == '__main__':
