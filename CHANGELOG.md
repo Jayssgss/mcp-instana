@@ -1,4 +1,17 @@
 # Changelog
+### 0.6.2
+
+-   **New Feature:** Added header for the User-agent for version tracking of mcp instana.
+
+### 0.6.1
+
+-   **Chore:** Updated README with Website Tools documentation.
+-   **Chore:** Added KIRO setup instructions to README.
+
+### 0.6.1
+
+-   **Chore:** Updated README with Website Tools documentation.
+-   **Chore:** Added KIRO setup instructions to README.
 
 ### 0.6.1
 
