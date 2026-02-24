@@ -32,10 +32,6 @@ class WebsiteMetricsMCPTools(BaseInstanaClient):
         """Initialize the Website Metrics MCP tools client."""
         super().__init__(read_token=read_token, base_url=base_url)
 
-    @register_as_tool(
-        title="Get Website Page Load",
-        annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False)
-    )
     @with_header_auth(WebsiteMetricsApi)
     async def get_website_page_load(self,
                                    page_id: str,
@@ -89,10 +85,7 @@ class WebsiteMetricsMCPTools(BaseInstanaClient):
             logger.error(f"Error in get_website_page_load: {e}", exc_info=True)
             return [{"error": f"Failed to get website page load: {e!s}"}]
 
-    @register_as_tool(
-        title="Get Website Beacon Metrics V2",
-        annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False)
-    )
+
     @with_header_auth(WebsiteMetricsApi)
     async def get_website_beacon_metrics_v2(self,
                                            payload: Optional[Union[Dict[str, Any], str]] = None,

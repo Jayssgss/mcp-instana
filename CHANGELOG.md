@@ -1,4 +1,10 @@
 # Changelog
+
+### 0.7.5
+
+-   **Enhancement:** Introduced a unified smart router to handle all website-related operations, improving routing consistency and maintainability.
+-    **Fix:** Corrected payload mapping logic for Application Analyze queries to ensure accurate request handling and response generation.
+
 ### 0.7.1
 
 -   **Fix:** Fixed schema directory not being included in PyPI package distribution.

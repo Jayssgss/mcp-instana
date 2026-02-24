@@ -30,10 +30,226 @@ class WebsiteConfigurationMCPTools(BaseInstanaClient):
         """Initialize the Website Configuration MCP tools client."""
         super().__init__(read_token=read_token, base_url=base_url)
 
-    @register_as_tool(
-        title="Get Websites",
-        annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False)
-    )
+    async def execute_website_operation(
+        self,
+        operation: str,
+        website_id: Optional[str] = None,
+        website_name: Optional[str] = None,
+        name: Optional[str] = None,
+        payload: Optional[Union[Dict, str]] = None,
+        ctx = None
+    ) -> Dict[str, Any]:
+        """
+        Execute website CRUD operations.
+        Called by the smart router tool.
+
+        Args:
+            operation: Operation to perform (get_all, get, create, delete, rename)
+            website_id: Website ID
+            website_name: Website name (for name resolution)
+            name: New name (for create/rename operations)
+            payload: Configuration payload
+            ctx: MCP context
+
+       Returns:
+            Operation result dictionary
+        """
+        try:
+            if operation == "get_all":
+                return await self._get_all_websites(ctx)
+            elif operation == "get":
+                return await self._get_website(website_id, website_name, ctx)
+            elif operation == "create":
+                return await self._create_website(name, payload, ctx)
+            elif operation == "delete":
+                return await self._delete_website(website_id, ctx)
+            elif operation == "rename":
+                return await self._rename_website(website_id, name, ctx)
+            else:
+                return {"error": f"Invalid operation: {operation}"}
+        except Exception as e:
+            logger.error(f"[execute_website_operation] Error for operation '{operation}': {e}", exc_info=True)
+            return {"error": f"Failed to execute website operation: {e!s}"}
+
+    async def execute_advanced_config_operation(
+        self,
+        operation: str,
+        website_id: Optional[str] = None,
+        website_name: Optional[str] = None,
+        ctx = None
+    ) -> Dict[str, Any]:
+        """
+        Execute advanced configuration retrieval operations (read-only).
+        Handles geo-location, IP masking, and geo mapping rules.
+        Called by the smart router tool.
+
+        Note: Source map operations are available as separate methods but not exposed
+        through this executor due to authentication limitations.
+
+        Args:
+            operation: Operation to perform (get_geo_config, get_ip_masking, get_geo_rules)
+            website_id: Website ID
+            website_name: Website name (for name resolution)
+            ctx: MCP context
+
+        Returns:
+            Operation result dictionary
+        """
+        try:
+            # Resolve website_name to website_id if needed using _get_website
+            if website_name and not website_id:
+                logger.debug(f"[execute_advanced_config_operation] Resolving website name '{website_name}' to website ID")
+
+                # Use _get_website to get the website details and extract the ID
+                website_result = await self._get_website(website_id=None, website_name=website_name, ctx=ctx)
+
+                # Check if we got an error
+                if isinstance(website_result, dict) and "error" in website_result:
+                    return website_result
+
+                # Extract website_id from the result
+                if isinstance(website_result, dict):
+                    website_id = website_result.get("id")
+                    if website_id:
+                        logger.debug(f"[execute_advanced_config_operation] Resolved website name '{website_name}' to ID: {website_id}")
+                    else:
+                        return {"error": f"Could not extract ID for website '{website_name}'"}
+                else:
+                    return {"error": f"Unexpected result format when resolving website name '{website_name}'"}
+
+            # Validate website_id is provided
+            if not website_id:
+                return {"error": "Either website_id or website_name must be provided"}
+
+            # Route to appropriate GET operation
+            if operation == "get_geo_config":
+                return await self.get_website_geo_location_configuration(website_id, ctx)
+            elif operation == "get_ip_masking":
+                return await self.get_website_ip_masking_configuration(website_id, ctx)
+            elif operation == "get_geo_rules":
+                return await self.get_website_geo_mapping_rules(website_id, ctx)
+            else:
+                return {"error": f"Invalid advanced config operation: {operation}. Valid operations: get_geo_config, get_ip_masking, get_geo_rules"}
+        except Exception as e:
+            logger.error(f"[execute_advanced_config_operation] Error for operation '{operation}': {e}", exc_info=True)
+            return {"error": f"Failed to execute advanced config operation: {e!s}"}
+
+    @with_header_auth(WebsiteConfigurationApi)
+    async def _get_all_websites(self, ctx=None, api_client=None) -> Dict[str, Any]:
+        return await self.get_websites(ctx=ctx, api_client=api_client)
+
+    @with_header_auth(WebsiteConfigurationApi)
+    async def _get_website(
+        self,
+        website_id: Optional[str],
+        website_name: Optional[str],
+        ctx=None,
+        api_client=None
+    ) -> Dict[str, Any]:
+        """Get a specific website by ID or name."""
+        # If website_name is provided but not website_id, resolve it
+        if website_name and not website_id:
+            logger.debug(f"[_get_website] Resolving website name '{website_name}' to website ID")
+
+            # Get all websites
+            all_websites_result = await self.get_websites(ctx=ctx, api_client=api_client)
+            logger.debug(f"[_get_website] get_websites returned type: {type(all_websites_result)}, value: {all_websites_result}")
+
+            # Handle both list and dict responses
+            websites_list = all_websites_result
+            if isinstance(all_websites_result, dict):
+                # If it's a dict, it might have the list in a 'results' or similar key
+                if 'results' in all_websites_result:
+                    websites_list = all_websites_result['results']
+                else:
+                    # The dict itself might be a single website, wrap it in a list
+                    websites_list = [all_websites_result]
+
+            # Search for matching website name
+            if isinstance(websites_list, list):
+                for website in websites_list:
+                    # Handle both dict and object (Pydantic model) formats
+                    if isinstance(website, dict):
+                        website_label = website.get('name', '')
+                        website_id_found = website.get('id', '')
+                    elif hasattr(website, 'name') and hasattr(website, 'id'):
+                        # It's a Pydantic model or object with attributes
+                        website_label = website.name
+                        website_id_found = website.id
+                    else:
+                        logger.warning(f"[_get_website] Unexpected website format: {type(website)}, {website}")
+                        continue
+
+                    # Case-insensitive match
+                    if website_label and website_label.lower() == website_name.lower() and website_id_found:
+                        logger.debug(f"[_get_website] Found website '{website_label}' with ID: {website_id_found}")
+                        website_id = website_id_found
+                        break
+
+                if not website_id:
+                    # Extract names for logging
+                    available_names = []
+                    for w in websites_list:
+                        if isinstance(w, dict):
+                            available_names.append(w.get('name', 'unknown'))
+                        elif hasattr(w, 'name'):
+                            available_names.append(w.name)
+                    logger.warning(f"[_get_website] No website found with name '{website_name}'. Available websites: {available_names}")
+                    return {"error": f"No website found with name '{website_name}'"}
+            else:
+                logger.error(f"[_get_website] Unexpected websites_list type: {type(websites_list)}, value: {websites_list}")
+                return {"error": "Failed to retrieve websites for name resolution"}
+
+        if not website_id:
+            return {"error": "website_id or website_name is required for get operation"}
+
+        return await self.get_website(website_id=website_id, ctx=ctx, api_client=api_client)
+
+    @with_header_auth(WebsiteConfigurationApi)
+    async def _create_website(
+        self,
+        name: Optional[str],
+        payload: Optional[Union[Dict, str]],
+        ctx=None,
+        api_client=None
+    ) -> Dict[str, Any]:
+        """ Create a new website. """
+
+        if not name:
+            return {"error": "Website name is required for create operation"}
+
+        return await self.create_website(name=name, payload=payload, ctx=ctx, api_client=api_client)
+
+    @with_header_auth(WebsiteConfigurationApi)
+    async def _delete_website(
+        self,
+        website_id: Optional[str],
+        ctx=None,
+        api_client=None
+    ) -> Dict[str, Any]:
+        """ Delete a website. """
+
+        if not website_id:
+            return {"error": "website_id is required for delete operation"}
+
+        return await self.delete_website(website_id=website_id, ctx=ctx, api_client=api_client)
+
+    @with_header_auth(WebsiteConfigurationApi)
+    async def _rename_website(
+        self,
+        website_id: Optional[str],
+        name: Optional[str],
+        ctx=None,
+        api_client=None
+    ) -> Dict[str, Any]:
+        """Rename a website."""
+        if not website_id:
+            return {"error": "website_id is required for rename operation"}
+        if not name:
+            return {"error": "name is required for rename operation"}
+
+        return await self.rename_website(website_id=website_id, name=name, ctx=ctx, api_client=api_client)
+
     @with_header_auth(WebsiteConfigurationApi)
     async def get_websites(self, ctx=None, api_client=None) -> List[Dict[str, Any]]:
         """
@@ -48,7 +264,7 @@ class WebsiteConfigurationMCPTools(BaseInstanaClient):
             Dictionary containing websites data or error information
         """
         try:
-            logger.debug("get_websites called")
+            logger.debug("[get_websites] Called")
 
             # Call the get_websites method from the SDK
             result = api_client.get_websites()
@@ -60,16 +276,12 @@ class WebsiteConfigurationMCPTools(BaseInstanaClient):
                 # If it's already a dict or another format, use it as is
                 result_dict = result
 
-            logger.debug(f"Result from get_websites: {result_dict}")
+            logger.debug(f"[get_websites] Result: {result_dict}")
             return result_dict
         except Exception as e:
-            logger.error(f"Error in get_websites: {e}", exc_info=True)
+            logger.error(f"[get_websites] Error: {e}", exc_info=True)
             return [{"error": f"Failed to get websites: {e!s}"}]
 
-    @register_as_tool(
-        title="Get Website",
-        annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False)
-    )
     @with_header_auth(WebsiteConfigurationApi)
     async def get_website(self, website_id: str, ctx=None, api_client=None) -> Dict[str, Any]:
         """
@@ -85,7 +297,7 @@ class WebsiteConfigurationMCPTools(BaseInstanaClient):
             Dictionary containing website data or error information
         """
         try:
-            logger.debug(f"get_website called with website_id={website_id}")
+            logger.debug(f"[get_website] Called with website_id={website_id}")
 
             # Call the get_website method from the SDK
             result = api_client.get_website(website_id=website_id)
@@ -97,20 +309,16 @@ class WebsiteConfigurationMCPTools(BaseInstanaClient):
                 # If it's already a dict or another format, use it as is
                 result_dict = result
 
-            logger.debug(f"Result from get_website: {result_dict}")
+            logger.debug(f"[get_website] Result: {result_dict}")
             return result_dict
         except Exception as e:
-            logger.error(f"Error in get_website: {e}", exc_info=True)
+            logger.error(f"[get_website] Error: {e}", exc_info=True)
             return {"error": f"Failed to get website: {e!s}"}
 
-    @register_as_tool(
-        title="Create Website",
-        annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False)
-    )
     @with_header_auth(WebsiteConfigurationApi)
     async def create_website(self,
                             name: str,
-                            payload: Optional[Dict[str, Any]] = None,
+                            payload: Optional[Union[List[Dict[str, Any]], str]] = None,
                             ctx=None,
                             api_client=None) -> Dict[str, Any]:
         """
@@ -119,8 +327,11 @@ class WebsiteConfigurationMCPTools(BaseInstanaClient):
         This API endpoint creates a new website configuration in your Instana environment.
 
         Args:
-            name: Name of the website
-            payload: Website configuration payload as a dictionary or JSON string
+            name: Name of the website (required)
+            payload: Optional list of team tags. Each team tag should have:
+                - displayName: Display name of the team tag
+                - id: ID of the team tag
+                Example: [{"displayName": "Frontend Team", "id": "team-123"}]
             ctx: The MCP context (optional)
 
         Returns:
@@ -128,58 +339,70 @@ class WebsiteConfigurationMCPTools(BaseInstanaClient):
         """
         try:
             # Parse the payload if it's a string
-            if isinstance(payload, str):
-                logger.debug("Payload is a string, attempting to parse")
-                try:
-                    import json
+            team_tags = None
+            if payload:
+                if isinstance(payload, str):
+                    logger.debug("[create_website] Payload is a string, attempting to parse")
                     try:
-                        parsed_payload = json.loads(payload)
-                        logger.debug("Successfully parsed payload as JSON")
-                        request_body = parsed_payload
-                    except json.JSONDecodeError as e:
-                        logger.debug(f"JSON parsing failed: {e}, trying with quotes replaced")
-
-                        # Try replacing single quotes with double quotes
-                        fixed_payload = payload.replace("'", "\"")
+                        import json
                         try:
-                            parsed_payload = json.loads(fixed_payload)
-                            logger.debug("Successfully parsed fixed JSON")
-                            request_body = parsed_payload
-                        except json.JSONDecodeError:
-                            # Try as Python literal
-                            import ast
+                            parsed_payload = json.loads(payload)
+                            logger.debug("[create_website] Successfully parsed payload as JSON")
+                            team_tags = parsed_payload
+                        except json.JSONDecodeError as e:
+                            logger.debug(f"[create_website] JSON parsing failed: {e}, trying with quotes replaced")
+                            # Try replacing single quotes with double quotes
+                            fixed_payload = payload.replace("'", "\"")
                             try:
-                                parsed_payload = ast.literal_eval(payload)
-                                logger.debug("Successfully parsed payload as Python literal")
-                                request_body = parsed_payload
-                            except (SyntaxError, ValueError) as e2:
-                                logger.debug(f"Failed to parse payload string: {e2}")
-                                return {"error": f"Invalid payload format: {e2}", "payload": payload}
-                except Exception as e:
-                    logger.debug(f"Error parsing payload string: {e}")
-                    return {"error": f"Failed to parse payload: {e}", "payload": payload}
-            else:
-                # If payload is already a dictionary, use it directly
-                logger.debug("Using provided payload dictionary")
-                request_body = payload
+                                parsed_payload = json.loads(fixed_payload)
+                                logger.debug("[create_website] Successfully parsed fixed JSON")
+                                team_tags = parsed_payload
+                            except json.JSONDecodeError:
+                                # Try as Python literal
+                                import ast
+                                try:
+                                    parsed_payload = ast.literal_eval(payload)
+                                    logger.debug("[create_website] Successfully parsed payload as Python literal")
+                                    team_tags = parsed_payload
+                                except (SyntaxError, ValueError) as e2:
+                                    logger.debug(f"[create_website] Failed to parse payload string: {e2}")
+                                    return {"error": f"Invalid payload format: {e2}", "payload": payload}
+                    except Exception as e:
+                        logger.debug(f"[create_website] Error parsing payload string: {e}")
+                        return {"error": f"Failed to parse payload: {e}", "payload": payload}
+                elif isinstance(payload, list):
+                    # If payload is already a list, use it directly
+                    logger.debug("[create_website] Using provided payload list")
+                    team_tags = payload
+                else:
+                    return {"error": "Payload must be a list of team tags or a JSON string"}
 
-            # Create an Website object from the request body
-            try:
-                query_params = {}
-                if request_body and "display_name" in request_body:
-                    query_params["display_name"] = request_body["display_name"]
-                if request_body and "id" in request_body:
-                    query_params["id"] = request_body["id"]
-                logger.debug(f"Creating Website with params: {query_params}")
-            except Exception as e:
-                logger.debug(f"Error creating create_website: {e}")
-                return {"error": f"Failed to create website: {e!s}"}
+            # Convert team tags to CreateWebsiteRequestInner objects
+            create_website_request_inner = None
+            if team_tags:
+                try:
+                    from instana_client.models.create_website_request_inner import (
+                        CreateWebsiteRequestInner,
+                    )
+                    create_website_request_inner = []
+                    for tag in team_tags:
+                        if isinstance(tag, dict):
+                            # Use from_dict to handle field aliases properly
+                            tag_obj = CreateWebsiteRequestInner.from_dict(tag)
+                            if tag_obj:
+                                create_website_request_inner.append(tag_obj)
+                    logger.debug(f"Created {len(create_website_request_inner)} team tag objects")
+                except Exception as e:
+                    logger.error(f"Error creating team tag objects: {e}")
+                    return {"error": f"Failed to create team tag objects: {e!s}"}
 
             # Call the create_website method from the SDK
-            logger.debug("Calling create_website with config object")
+            logger.debug(f"Calling create_website with name={name}, team_tags={len(create_website_request_inner) if create_website_request_inner else 0}")
             result = api_client.create_website(
-                name=name
+                name=name,
+                create_website_request_inner=create_website_request_inner
             )
+
             # Convert the result to a dictionary
             if hasattr(result, 'to_dict'):
                 result_dict = result.to_dict()
@@ -187,19 +410,15 @@ class WebsiteConfigurationMCPTools(BaseInstanaClient):
                 # If it's already a dict or another format, use it as is
                 result_dict = result or {
                     "success": True,
-                    "message": "Create website"
+                    "message": "Website created successfully"
                 }
 
             logger.debug(f"Result from create_website: {result_dict}")
             return result_dict
         except Exception as e:
-            logger.error(f"Error in create_website: {e}")
+            logger.error(f"Error in create_website: {e}", exc_info=True)
             return {"error": f"Failed to create website: {e!s}"}
 
-    @register_as_tool(
-        title="Delete Website",
-        annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True)
-    )
     @with_header_auth(WebsiteConfigurationApi)
     async def delete_website(self, website_id: str, ctx=None, api_client=None) -> Dict[str, Any]:
         """
@@ -226,10 +445,6 @@ class WebsiteConfigurationMCPTools(BaseInstanaClient):
             logger.error(f"Error in delete_website: {e}", exc_info=True)
             return {"error": f"Failed to delete website: {e!s}"}
 
-    @register_as_tool(
-        title="Rename Website",
-        annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False)
-    )
     @with_header_auth(WebsiteConfigurationApi)
     async def rename_website(self,
                             website_id: str,
@@ -272,10 +487,6 @@ class WebsiteConfigurationMCPTools(BaseInstanaClient):
             logger.error(f"Error in rename_website: {e}", exc_info=True)
             return {"error": f"Failed to rename website: {e!s}"}
 
-    @register_as_tool(
-        title="Get Website Geo Location Configuration",
-        annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False)
-    )
     @with_header_auth(WebsiteConfigurationApi)
     async def get_website_geo_location_configuration(self,
                                                     website_id: str,
@@ -312,10 +523,6 @@ class WebsiteConfigurationMCPTools(BaseInstanaClient):
             logger.error(f"Error in get_website_geo_location_configuration: {e}", exc_info=True)
             return {"error": f"Failed to get website geo-location configuration: {e!s}"}
 
-    @register_as_tool(
-        title="Update Website Geo Location Configuration",
-        annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False)
-    )
     @with_header_auth(WebsiteConfigurationApi)
     async def update_website_geo_location_configuration(self,
                                                         website_id: str,
@@ -431,10 +638,6 @@ class WebsiteConfigurationMCPTools(BaseInstanaClient):
             logger.error(f"Error in update_website_geo_location_configuration: {e}")
             return {"error": f"Failed to update website geo-location configuration: {e!s}"}
 
-    @register_as_tool(
-        title="Get Website IP Masking Configuration",
-        annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False)
-    )
     @with_header_auth(WebsiteConfigurationApi)
     async def get_website_ip_masking_configuration(self, website_id: str, ctx=None, api_client=None) -> Dict[str, Any]:
         """
@@ -468,10 +671,6 @@ class WebsiteConfigurationMCPTools(BaseInstanaClient):
             logger.error(f"Error in get_website_ip_masking_configuration: {e}", exc_info=True)
             return {"error": f"Failed to get website IP masking configuration: {e!s}"}
 
-    @register_as_tool(
-        title="Update Website IP Masking Configuration",
-        annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False)
-    )
     @with_header_auth(WebsiteConfigurationApi)
     async def update_website_ip_masking_configuration(self,
                                                         website_id: str,
@@ -584,10 +783,6 @@ class WebsiteConfigurationMCPTools(BaseInstanaClient):
             logger.error(f"Error in update_website_ip_masking_configuration: {e}")
             return {"error": f"Failed to update website ip-masking configuration: {e!s}"}
 
-    @register_as_tool(
-        title="Get Website Geo Mapping Rules",
-        annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False)
-    )
     @with_header_auth(WebsiteConfigurationApi)
     async def get_website_geo_mapping_rules(self, website_id: str, ctx=None, api_client=None) -> List[Dict[str, Any]]:
         """
@@ -651,10 +846,6 @@ class WebsiteConfigurationMCPTools(BaseInstanaClient):
             logger.error(f"Error in get_website_geo_mapping_rules: {e}", exc_info=True)
             return [{"error": f"Failed to get website geo mapping rules: {e!s}"}]
 
-    @register_as_tool(
-        title="Set Website Geo Mapping Rules",
-        annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False)
-    )
     @with_header_auth(WebsiteConfigurationApi)
     async def set_website_geo_mapping_rules(self,
                                             website_id: str,
@@ -699,10 +890,6 @@ class WebsiteConfigurationMCPTools(BaseInstanaClient):
             logger.error(f"Error in set_website_geo_mapping_rules: {e}", exc_info=True)
             return {"error": f"Failed to set website geo mapping rules: {e!s}"}
 
-    @register_as_tool(
-        title="Upload Source Map File",
-        annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False)
-    )
     @with_header_auth(WebsiteConfigurationApi)
     async def upload_source_map_file(self,
                                         website_id: str,
@@ -760,10 +947,6 @@ class WebsiteConfigurationMCPTools(BaseInstanaClient):
             logger.error(f"Error in upload_source_map_file: {e}")
             return {"error": f"Failed to upload source map file: {e!s}"}
 
-    @register_as_tool(
-        title="Clear Source Map Upload Configuration",
-        annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False)
-    )
     @with_header_auth(WebsiteConfigurationApi)
     async def clear_source_map_upload_configuration(self,
                                                     website_id: str,
@@ -807,5 +990,133 @@ class WebsiteConfigurationMCPTools(BaseInstanaClient):
         except Exception as e:
             logger.error(f"Error in clear_source_map_upload_configuration: {e}", exc_info=True)
             return {"error": f"Failed to clear source map upload configuration: {e!s}"}
+
+    @with_header_auth(WebsiteConfigurationApi)
+    async def get_website_source_map_upload_configuration(
+        self,
+        website_id: str,
+        source_map_config_id: str,
+        ctx=None,
+        api_client=None
+    ) -> Dict[str, Any]:
+        """
+        Get a specific source map upload configuration for a website.
+
+        Args:
+            website_id: ID of the website
+            source_map_config_id: ID of the source map configuration
+            ctx: The MCP context (optional)
+
+        Returns:
+            Dictionary containing source map upload configuration or error information
+        """
+        try:
+            logger.debug(f"get_website_source_map_upload_configuration called with website_id={website_id}, source_map_config_id={source_map_config_id}")
+
+            # Try using without_preload_content to handle authentication properly
+            try:
+                response = api_client.get_website_source_map_upload_configuration_without_preload_content(
+                    website_id=website_id,
+                    source_map_config_id=source_map_config_id
+                )
+
+                # Check response status
+                if response.status != 200:
+                    error_message = f"Failed to get source map configuration: HTTP {response.status}"
+                    logger.error(error_message)
+                    try:
+                        error_body = response.data.decode('utf-8')
+                        logger.error(f"API Error Response: {error_body}")
+                        return {"error": error_message, "details": error_body, "status_code": response.status}
+                    except Exception:
+                        return {"error": error_message, "status_code": response.status}
+
+                # Parse response
+                response_text = response.data.decode('utf-8')
+                import json
+                result_dict = json.loads(response_text)
+                logger.debug(f"Result from get_website_source_map_upload_configuration: {result_dict}")
+                return result_dict
+
+            except Exception as api_error:
+                logger.warning(f"without_preload_content failed: {api_error}, trying standard method")
+                # Fallback to standard method
+                result = api_client.get_website_source_map_upload_configuration(
+                    website_id=website_id,
+                    source_map_config_id=source_map_config_id
+                )
+
+                if hasattr(result, 'to_dict'):
+                    result_dict = result.to_dict()
+                else:
+                    result_dict = result
+
+                logger.debug(f"Result from get_website_source_map_upload_configuration: {result_dict}")
+                return result_dict
+        except Exception as e:
+            logger.error(f"Error in get_website_source_map_upload_configuration: {e}", exc_info=True)
+            return {"error": f"Failed to get website source map upload configuration: {e!s}"}
+
+    @with_header_auth(WebsiteConfigurationApi)
+    async def get_website_source_map_upload_configurations(
+        self,
+        website_id: str,
+        ctx=None,
+        api_client=None
+    ) -> Dict[str, Any]:
+        """
+        Get all source map upload configurations for a website.
+
+        Args:
+            website_id: ID of the website
+            ctx: The MCP context (optional)
+
+        Returns:
+            Dictionary containing all source map upload configurations or error information
+        """
+        try:
+            logger.debug(f"get_website_source_map_upload_configurations called with website_id={website_id}")
+
+            # Try using without_preload_content to handle authentication properly
+            try:
+                response = api_client.get_website_source_map_upload_configurations_without_preload_content(
+                    website_id=website_id
+                )
+
+                # Check response status
+                if response.status != 200:
+                    error_message = f"Failed to get source map configurations: HTTP {response.status}"
+                    logger.error(error_message)
+                    try:
+                        error_body = response.data.decode('utf-8')
+                        logger.error(f"API Error Response: {error_body}")
+                        return {"error": error_message, "details": error_body, "status_code": response.status}
+                    except Exception:
+                        return {"error": error_message, "status_code": response.status}
+
+                # Parse response
+                response_text = response.data.decode('utf-8')
+                import json
+                result_dict = json.loads(response_text)
+                logger.debug(f"Result from get_website_source_map_upload_configurations: {result_dict}")
+                return result_dict
+
+            except Exception as api_error:
+                logger.warning(f"without_preload_content failed: {api_error}, trying standard method")
+                # Fallback to standard method
+                result = api_client.get_website_source_map_upload_configurations(
+                    website_id=website_id
+                )
+
+                if hasattr(result, 'to_dict'):
+                    result_dict = result.to_dict()
+                else:
+                    result_dict = result
+
+                logger.debug(f"Result from get_website_source_map_upload_configurations: {result_dict}")
+                return result_dict
+        except Exception as e:
+            logger.error(f"Error in get_website_source_map_upload_configurations: {e}", exc_info=True)
+            return {"error": f"Failed to get website source map upload configurations: {e!s}"}
 
 

@@ -666,31 +666,23 @@ Here is an example of a GitHub Copilot response:
       - [x] Get Issues
       - [x] Get Incidents
       - [x] Get Changes
-- [x] Website
-  - [x] Website Metrics
-    - [ ] Get Website Page Load
-    - [x] Get Website Beacon Metrics V2
-  - [x] Website Catalog
-    - [x] Get Website Catalog Metrics
-    - [x] Get Website Catalog Tags
-    - [ ] Get Website Tag Catalog
-  - [x] Website Analyze
-    - [x] Get Website Beacon Groups
-    - [x] Get Website Beacons
-  - [x] Website Configuration
-    - [x] Get Websites
-    - [x] Get Website
-    - [x] Create Website
-    - [x] Delete Website
-    - [x] Rename Website
-    - [x] Get Website Geo Location 
-    - [x] Update Website Geo Location 
-    - [x] Get Website IP Masking 
-    - [x] Update Website IP Masking 
-    - [x] Get Website Geo Mapping Rules
-    - [ ] Set Website Geo Mapping Rules
-    - [ ] Upload Source Map File
-    - [ ] Clear Source Map Upload
+- [x] **Unified Website Management** (`manage_website_resources`)
+  - [x] Website Analyze (resource_type="analyze")
+    - [x] Get Website Beacon Groups - grouped/aggregated beacon data (operation="get_beacon_groups")
+    - [x] Get Website Beacons - individual beacon data with pagination (operation="get_beacons")
+    - [x] Automatic tag validation and catalog-based elicitation workflow
+    - [x] Response summarization (70-80% payload reduction)
+    - [x] Support for multiple beacon types: PAGELOAD, PAGECHANGE, RESOURCELOAD, CUSTOM, HTTPREQUEST, ERROR
+  - [x] Website Catalog (resource_type="catalog")
+    - [x] Get Website Metrics Catalog (operation="get_metrics")
+    - [x] Get Website Tag Catalog by beacon type and use case (operation="get_tag_catalog")
+  - [x] Website Configuration (resource_type="configuration")
+    - [x] Get All Websites (operation="get_all")
+    - [x] Get Website by ID or name with automatic name resolution (operation="get")
+  - [x] Advanced Configuration - READ ONLY (resource_type="advanced_config")
+    - [x] Get Geo-Location Configuration (operation="get_geo_config")
+    - [x] Get IP Masking Configuration (operation="get_ip_masking")
+    - [x] Get Geo Mapping Rules (operation="get_geo_rules")
 - [x] **Custom Dashboards** (`manage_custom_dashboards`)
   - [x] Get all custom dashboards
   - [x] Get specific dashboard by ID
@@ -705,6 +697,7 @@ Here is an example of a GitHub Copilot response:
 | Tool                                                          | Category                       | Description                                            |
 |---------------------------------------------------------------|--------------------------------|------------------------------------------------------- |
 | `manage_instana_resources`                                    | Application & Infrastructure   | Unified tool for managing application metrics, alert configs, settings, and catalog |
+| `manage_website_resources`                                    | Website Monitoring             | Unified smart router for website analyze, catalog, configuration, and advanced config operations |
 | `manage_custom_dashboards`                                    | Custom Dashboards              | Unified tool for managing custom dashboard CRUD operations |
 | `analyze_infrastructure_elicitation`                          | Infrastructure Analyze         | Two-pass infrastructure analysis with entity/metric elicitation |
 | `get_actions`                                                 | Automation                     | Get available automation actions from action catalog   |
@@ -723,26 +716,6 @@ Here is an example of a GitHub Copilot response:
 | `get_incidents`                                               | Events                         | Get Incidents                                          |
 | `get_changes`                                                 | Events                         | Get Changes                                            |
 | `get_events_by_ids`                                           | Events                         | Get Events by IDs                                      |
-| `get_website_page_load`                                       | Website Metrics                | Get website monitoring beacons for a specific page load|
-| `get_website_beacon_metrics_v2`                               | Website Metrics                | Get website beacon metrics using the v2 API            |
-| `get_website_catalog_metrics`                                 | Website Catalog                | Get website monitoring metrics catalog                 |
-| `get_website_catalog_tags`                                    | Website Catalog                | Get website monitoring tags catalog                    |
-| `get_website_tag_catalog`                                     | Website Catalog                | Get website monitoring tag catalog                     |
-| `get_website_beacon_groups`                                   | Website Analyze                | Get grouped website beacon metrics                     |
-| `get_website_beacons`                                         | Website Analyze                | Get all website beacon metrics                         |
-| `get_websites`                                                | Website Configuration          | Get all websites                                       |
-| `get_website`                                                 | Website Configuration          | Get a specific website by ID                           |
-| `create_website`                                              | Website Configuration          | Create a new website configuration                     |
-| `delete_website`                                              | Website Configuration          | Delete a website configuration                         |
-| `rename_website`                                              | Website Configuration          | Rename a website configuration                         |
-| `get_website_geo_location_configuration`                      | Website Configuration          | Get geo-location configuration for a website           |
-| `update_website_geo_location_configuration`                   | Website Configuration          | Update geo-location configuration for a website        |
-| `get_website_ip_masking_configuration`                        | Website Configuration          | Get IP masking configuration for a website             |
-| `update_website_ip_masking_configuration`                     | Website Configuration          | Update IP masking configuration for a website          |
-| `get_website_geo_mapping_rules`                               | Website Configuration          | Get custom geo mapping rules for website               |
-| `set_website_geo_mapping_rules`                               | Website Configuration          | Set custom geo mapping rules for website               |
-| `upload_source_map_file`                                      | Website Configuration          | Upload source map file for a website                   |
-| `clear_source_map_upload_configuration`                       | Website Configuration          | Clear source map upload configuration for a website    |
 
 
 ## Tool Filtering
@@ -1017,6 +990,58 @@ The azureManagedHSM plugin provides three metrics that can help monitor service 
 2. Overall Service Api Latency: This metric measures the overall latency of service API requests.
 3. Overall Service Availability: This metric measures the availability of the service.
 ```
+- **Query 11 (Website Monitoring)**
+```
+I need to analyze page load performance for my robot-shop website. 
+Can you get the beacon count grouped by page name for the last hour?
+```
+
+- **Result 11**
+```
+Using the manage_website_resources tool with:
+- resource_type: "catalog"
+- operation: "get_tag_catalog" 
+- params: {"beacon_type": "PAGELOAD", "use_case": "GROUPING"}
+
+Then querying with:
+- resource_type: "analyze"
+- operation: "get_beacon_groups"
+- params: {
+    "metrics": [{"metric": "beaconCount", "aggregation": "SUM"}],
+    "group": {"groupByTag": "beacon.page.name"},
+    "tag_filter_expression": {
+      "type": "TAG_FILTER",
+      "name": "beacon.website.name",
+      "operator": "EQUALS",
+      "value": "robot-shop"
+    },
+    "beacon_type": "PAGELOAD"
+  }
+
+Results show beacon counts per page:
+- /home: 1,234 beacons
+- /products: 892 beacons
+- /cart: 456 beacons
+```
+
+- **Query 12 (Website Configuration)**
+```
+What websites are configured in Instana and what are their geo-location settings?
+```
+
+- **Result 12**
+```
+Using manage_website_resources with resource_type="configuration" and operation="get_all" 
+shows 3 configured websites: robot-shop, e-commerce-prod, and marketing-site.
+
+Then retrieving geo-location config for robot-shop using:
+- resource_type: "advanced_config"
+- operation: "get_geo_config"
+- params: {"website_name": "robot-shop"}
+
+Shows geoDetailRemoval is enabled and custom geo mapping rules are configured for specific IP ranges.
+```
+
 
 ## Docker Deployment
 

@@ -74,6 +74,7 @@ class MCPState:
     infra_analyze_new_client: Any = None
 
     # Events tools
+    smart_router_website_client: Any = None
     events_client: Any = None
 
     # Automation tools
@@ -83,7 +84,6 @@ class MCPState:
     # Website tools
     website_metrics_client: Any = None
     website_catalog_client: Any = None
-    website_analyze_client: Any = None
     website_configuration_client: Any = None
 
     # Settings tools
@@ -246,12 +246,12 @@ def get_client_categories():
             CustomDashboardSmartRouterMCPTool,
         )
         from src.core.smart_router_tool import SmartRouterMCPTool
+        from src.core.website_smart_router import SmartRouterWebsiteMCPTool
         from src.event.events_tools import AgentMonitoringEventsMCPTools
         from src.infrastructure.infrastructure_analyze_new import (
             InfrastructureAnalyzeOption2,
         )
         from src.settings.custom_dashboard_tools import CustomDashboardMCPTools
-        from src.website.website_analyze import WebsiteAnalyzeMCPTools
         from src.website.website_catalog import WebsiteCatalogMCPTools
         from src.website.website_configuration import WebsiteConfigurationMCPTools
         from src.website.website_metrics import WebsiteMetricsMCPTools
@@ -263,6 +263,7 @@ def get_client_categories():
         "router": [
             ('smart_router_client', SmartRouterMCPTool),
             ('custom_dashboard_smart_router_client', CustomDashboardSmartRouterMCPTool),
+            ('smart_router_website_client', SmartRouterWebsiteMCPTool),
         ],
         "infra": [
             ('infra_analyze_new_client', InfrastructureAnalyzeOption2),
@@ -277,7 +278,6 @@ def get_client_categories():
         "website": [
             ('website_metrics_client', WebsiteMetricsMCPTools),
             ('website_catalog_client', WebsiteCatalogMCPTools),
-            ('website_analyze_client', WebsiteAnalyzeMCPTools),
             ('website_configuration_client', WebsiteConfigurationMCPTools),
         ],
         "settings": [
