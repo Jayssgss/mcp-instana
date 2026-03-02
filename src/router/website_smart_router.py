@@ -62,7 +62,7 @@ class SmartRouterWebsiteMCPTool(BaseInstanaClient):
         title="Manage Instana Website Resources",
         annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False)
     )
-    async def manage_website_resources(
+    async def manage_websites(
         self,
         resource_type: str,
         operation: str,

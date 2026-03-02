@@ -117,40 +117,43 @@ class TestInfrastructureMetricsMCPTools(unittest.TestCase):
         self.assertEqual(self.client.base_url, self.base_url)
 
     def test_get_infrastructure_metrics_missing_metrics(self):
-        """Test get_infrastructure_metrics with missing metrics parameter"""
+        """Test get_infrastructure_metrics with missing metrics parameter returns elicitation request"""
         # Call the method without metrics
         result = asyncio.run(self.client.get_infrastructure_metrics(
             plugin="host",
             query="entity.type:host"
         ))
 
-        # Check that the result contains an error message
-        self.assertIn("error", result)
-        self.assertEqual("Metrics is required for this operation", result["error"])
+        # Check that the result contains an elicitation request (two-pass elicitation behavior)
+        self.assertIn("elicitation_needed", result)
+        self.assertTrue(result["elicitation_needed"])
+        self.assertIn("metrics", result["missing_parameters"])
 
     def test_get_infrastructure_metrics_missing_plugin(self):
-        """Test get_infrastructure_metrics with missing plugin parameter"""
+        """Test get_infrastructure_metrics with missing plugin parameter returns elicitation request"""
         # Call the method without plugin
         result = asyncio.run(self.client.get_infrastructure_metrics(
             metrics=["cpu.usage"],
             query="entity.type:host"
         ))
 
-        # Check that the result contains an error message
-        self.assertIn("error", result)
-        self.assertEqual("Plugin is required for this operation", result["error"])
+        # Check that the result contains an elicitation request (two-pass elicitation behavior)
+        self.assertIn("elicitation_needed", result)
+        self.assertTrue(result["elicitation_needed"])
+        self.assertIn("plugin", result["missing_parameters"])
 
     def test_get_infrastructure_metrics_missing_query(self):
-        """Test get_infrastructure_metrics with missing query parameter"""
+        """Test get_infrastructure_metrics with missing query parameter returns elicitation request"""
         # Call the method without query
         result = asyncio.run(self.client.get_infrastructure_metrics(
             metrics=["cpu.usage"],
             plugin="host"
         ))
 
-        # Check that the result contains an error message
-        self.assertIn("error", result)
-        self.assertEqual("Query is required for this operation", result["error"])
+        # Check that the result contains an elicitation request (two-pass elicitation behavior)
+        self.assertIn("elicitation_needed", result)
+        self.assertTrue(result["elicitation_needed"])
+        self.assertIn("query_filter", result["missing_parameters"])
 
     @patch('src.infrastructure.infrastructure_metrics.datetime')
     def test_get_infrastructure_metrics_with_defaults(self, mock_datetime):
@@ -303,7 +306,7 @@ class TestInfrastructureMetricsMCPTools(unittest.TestCase):
 
         # Check that the result contains an error message
         self.assertIn("error", result)
-        self.assertIn("Failed to get Infra metrics", result["error"])
+        self.assertIn("Failed to get infrastructure metrics", result["error"])
         self.assertIn("Test error", result["error"])
 
 

@@ -79,7 +79,7 @@ class SmartRouterEventsMCPTool(BaseInstanaClient):
         title="Manage Instana Events Resources",
         annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False)
     )
-    async def manage_events_resources(
+    async def manage_events(
         self,
         operation: str,
         params: Optional[Dict[str, Any]] = None,

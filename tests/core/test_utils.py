@@ -419,13 +419,21 @@ class TestBaseInstanaClient(unittest.TestCase):
 
     def test_with_header_auth_invalid_base_url(self):
         """Test with_header_auth with invalid base URL"""
-        # Mock the get_http_headers function
-        with patch('fastmcp.server.dependencies.get_http_headers') as mock_get_headers:
-            mock_get_headers.return_value = {
-                "instana-api-token": "header_token",
-                "instana-base-url": "invalid_url"  # Missing http/https
-            }
+        # Ensure fastmcp.server.dependencies is a real mock with controllable get_http_headers
+        mock_deps = MagicMock()
+        mock_deps.get_http_headers.return_value = {
+            "instana-api-token": "header_token",
+            "instana-base-url": "invalid_url"  # Missing http/https
+        }
+        mock_fastmcp = MagicMock()
+        mock_fastmcp.server.dependencies = mock_deps
 
+        saved = {k: sys.modules.get(k) for k in ['fastmcp', 'fastmcp.server', 'fastmcp.server.dependencies']}
+        sys.modules['fastmcp'] = mock_fastmcp
+        sys.modules['fastmcp.server'] = mock_fastmcp.server
+        sys.modules['fastmcp.server.dependencies'] = mock_deps
+
+        try:
             # Create a test API class
             class TestApiClass:
                 def __init__(self, api_client):
@@ -442,6 +450,12 @@ class TestBaseInstanaClient(unittest.TestCase):
             # Should return an error for invalid URL format
             self.assertIn("error", result)
             self.assertIn("Instana base URL must start with http:// or https://", result["error"])
+        finally:
+            for k, v in saved.items():
+                if v is None:
+                    sys.modules.pop(k, None)
+                else:
+                    sys.modules[k] = v
 
     def test_with_header_auth_missing_headers(self):
         """Test with_header_auth with missing headers"""
@@ -493,10 +507,18 @@ class TestBaseInstanaClient(unittest.TestCase):
 
     def test_with_header_auth_decorator_error(self):
         """Test with_header_auth when decorator encounters an error"""
-        # Mock the get_http_headers function to raise an exception
-        with patch('fastmcp.server.dependencies.get_http_headers') as mock_get_headers:
-            mock_get_headers.side_effect = Exception("Decorator error")
+        # Ensure fastmcp.server.dependencies is a real mock with controllable get_http_headers
+        mock_deps = MagicMock()
+        mock_deps.get_http_headers.side_effect = Exception("Decorator error")
+        mock_fastmcp = MagicMock()
+        mock_fastmcp.server.dependencies = mock_deps
 
+        saved = {k: sys.modules.get(k) for k in ['fastmcp', 'fastmcp.server', 'fastmcp.server.dependencies']}
+        sys.modules['fastmcp'] = mock_fastmcp
+        sys.modules['fastmcp.server'] = mock_fastmcp.server
+        sys.modules['fastmcp.server.dependencies'] = mock_deps
+
+        try:
             # Create a test API class
             class TestApiClass:
                 def __init__(self, api_client):
@@ -513,6 +535,12 @@ class TestBaseInstanaClient(unittest.TestCase):
             # Should return an error
             self.assertIn("error", result)
             self.assertIn("Authentication error", result["error"])
+        finally:
+            for k, v in saved.items():
+                if v is None:
+                    sys.modules.pop(k, None)
+                else:
+                    sys.modules[k] = v
 
     def test_make_request_with_json_data(self):
         """Test make_request with JSON data"""

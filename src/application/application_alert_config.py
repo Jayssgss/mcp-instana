@@ -33,7 +33,7 @@ class ApplicationAlertMCPTools(BaseInstanaClient):
         """Initialize the Application Alert MCP tools client."""
         super().__init__(read_token=read_token, base_url=base_url)
 
-    # CRUD Operations Dispatcher - called by smart_router_tool.py
+    # CRUD Operations Dispatcher - called by application_smart_router_tool.py
     async def execute_alert_config_operation(
         self,
         operation: str,

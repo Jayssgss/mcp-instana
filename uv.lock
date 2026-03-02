@@ -1520,7 +1520,7 @@ wheels = [
 
 [[package]]
 name = "mcp-instana"
-version = "0.7.5"
+version = "0.8.0"
 source = { editable = "." }
 dependencies = [
     { name = "fastmcp" },
@@ -1557,7 +1557,7 @@ requires-dist = [
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=6.2.1" },
     { name = "pytest-mock", marker = "extra == 'dev'", specifier = ">=3.14.1" },
     { name = "python-dotenv", specifier = "==1.1.0" },
-    { name = "requests", specifier = "==2.32.4" },
+    { name = "requests", specifier = ">=2.32.3,<3.0.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = "==0.5.0" },
     { name = "traceloop-sdk", specifier = ">=0.47.5" },
     { name = "uv", marker = "extra == 'dev'", specifier = "==0.8.6" },

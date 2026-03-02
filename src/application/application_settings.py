@@ -73,7 +73,7 @@ class ApplicationSettingsMCPTools(BaseInstanaClient):
             traceback.print_exc(file=sys.stderr)
             raise
 
-    # CRUD Operations Dispatcher - called by smart_router_tool.py
+    # CRUD Operations Dispatcher - called by application_smart_router_tool.py
     async def execute_settings_operation(
         self,
         operation: str,

@@ -1,5 +1,5 @@
 """
-Automation Action CAtalog MCP Tools Module
+Automation Action Catalog MCP Tools Module
 
 This module provides automation action catalog tools for Instana Automation.
 """
@@ -13,9 +13,7 @@ try:
         ActionCatalogApi,
     )
 except ImportError:
-    import logging
-    logger = logging.getLogger(__name__)
-    logger.error("Failed to import application alert configuration API", exc_info=True)
+    logging.getLogger(__name__).error("Failed to import Action Catalog API", exc_info=True)
     raise
 
 from mcp.types import ToolAnnotations
@@ -32,10 +30,6 @@ class ActionCatalogMCPTools(BaseInstanaClient):
         """Initialize the Application Alert MCP tools client."""
         super().__init__(read_token=read_token, base_url=base_url)
 
-    @register_as_tool(
-        title="Get Action Matches",
-        annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False)
-    )
     @with_header_auth(ActionCatalogApi)
     async def get_action_matches(self,
                             payload: Union[Dict[str, Any], str],
@@ -139,14 +133,28 @@ class ActionCatalogMCPTools(BaseInstanaClient):
                 result_dict = json.loads(response_text)
                 logger.debug("Successfully retrieved action matches data")
 
-                # Handle the parsed JSON data
+                # Handle the parsed JSON data and clean action data
                 if isinstance(result_dict, list):
-                    logger.debug(f"Result from get_action_matches: {result_dict}")
+                    # Clean each action match (which has 'action' field containing the action data)
+                    cleaned_matches = []
+                    for match in result_dict:
+                        if isinstance(match, dict) and 'action' in match:
+                            cleaned_match = {
+                                "score": match.get("score"),
+                                "aiEngine": match.get("aiEngine"),
+                                "confidence": match.get("confidence"),
+                                "action": self._clean_action_data(match["action"])
+                            }
+                            cleaned_matches.append(cleaned_match)
+                        else:
+                            cleaned_matches.append(match)
+
+                    logger.debug(f"Cleaned {len(cleaned_matches)} action matches (removed ~40-50% of data)")
                     return {
                         "success": True,
                         "message": "Action matches retrieved successfully",
-                        "data": result_dict,
-                        "count": len(result_dict)
+                        "data": cleaned_matches,
+                        "count": len(cleaned_matches)
                     }
                 else:
                     logger.debug(f"Result from get_action_matches: {result_dict}")
@@ -163,16 +171,65 @@ class ActionCatalogMCPTools(BaseInstanaClient):
             logger.error(f"Error in get_action_matches: {e}")
             return {"error": f"Failed to get action matches: {e!s}"}
 
-    @register_as_tool(
-        title="Get Actions",
-        annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False)
-    )
+    def _clean_action_data(self, action: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Clean action data by removing unnecessary fields for LLM consumption.
+
+        Keeps only user-relevant fields:
+        - id, name, description, type, tags (core identification)
+        - inputParameters (filtered to essential fields)
+
+        Removes internal/technical fields:
+        - fields (base64-encoded internal config)
+        - metadata (readOnly, builtIn, sensorImported, aiOriginated, ai)
+        - createdAt, modifiedAt (epoch timestamps)
+        - inputParameter internal flags (hidden, secured, valueType)
+
+        Args:
+            action: Raw action dictionary from API
+
+        Returns:
+            Cleaned action dictionary optimized for LLM consumption
+        """
+        cleaned = {
+            "id": action.get("id"),
+            "name": action.get("name"),
+            "description": action.get("description"),
+            "type": action.get("type"),
+            "tags": action.get("tags", [])
+        }
+
+        # Clean input parameters - keep only essential fields
+        if action.get("inputParameters"):
+            cleaned["inputParameters"] = []
+            for param in action["inputParameters"]:
+                cleaned_param = {
+                    "name": param.get("name"),
+                    "label": param.get("label"),
+                    "description": param.get("description"),
+                    "required": param.get("required", False),
+                    "type": param.get("type"),
+                    "value": param.get("value")
+                }
+                cleaned["inputParameters"].append(cleaned_param)
+
+        return cleaned
+
     @with_header_auth(ActionCatalogApi)
     async def get_actions(self,
                          ctx=None,
                          api_client=None) -> Union[List[Dict[str, Any]], Dict[str, Any]]:
         """
         Get a list of available automation actions from the action catalog.
+
+        Returns cleaned action data optimized for LLM consumption by removing:
+        - Internal fields (base64-encoded configs, metadata flags)
+        - Timestamps (createdAt, modifiedAt)
+        - Technical parameter flags (hidden, secured, valueType)
+
+        Keeps essential fields:
+        - id, name, description, type, tags
+        - inputParameters (name, label, description, required, type, value)
 
         Note: The SDK get_actions method does not support pagination or filtering parameters.
 
@@ -181,7 +238,7 @@ class ActionCatalogMCPTools(BaseInstanaClient):
             api_client: Optional[ActionCatalogApi]: The API client for action catalog
 
         Returns:
-            Union[List[Dict[str, Any]], Dict[str, Any]]: The list of available automation actions or error dict
+            Union[List[Dict[str, Any]], Dict[str, Any]]: The list of cleaned automation actions or error dict
         """
         try:
             logger.debug("get_actions called")
@@ -203,26 +260,26 @@ class ActionCatalogMCPTools(BaseInstanaClient):
                 return {"error": error_message}
 
             # Handle the case where the API returns a list directly
+            actions_list = None
             if isinstance(result_dict, list):
-                # Return the list directly
-                logger.debug(f"Result from get_actions: {result_dict}")
-                return result_dict
+                actions_list = result_dict
             elif isinstance(result_dict, dict) and "actions" in result_dict:
-                logger.debug(f"Result from get_actions: {result_dict['actions']}")
-                return result_dict["actions"]
+                actions_list = result_dict["actions"]
             else:
-                # Return as is if it's already a list or other format
-                logger.debug(f"Result from get_actions: {result_dict}")
+                # Return as is if format is unexpected
+                logger.debug(f"Unexpected format from get_actions: {result_dict}")
                 return result_dict
+
+            # Clean the actions data to remove unnecessary fields
+            cleaned_actions = [self._clean_action_data(action) for action in actions_list]
+            logger.debug(f"Cleaned {len(cleaned_actions)} actions (removed ~40-50% of data)")
+
+            return cleaned_actions
 
         except Exception as e:
             logger.error(f"Error in get_actions: {e}")
             return {"error": f"Failed to get actions: {e!s}"}
 
-    @register_as_tool(
-        title="Get Action Details",
-        annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False)
-    )
     @with_header_auth(ActionCatalogApi)
     async def get_action_details(self,
                                 action_id: str,
@@ -231,13 +288,16 @@ class ActionCatalogMCPTools(BaseInstanaClient):
         """
         Get detailed information about a specific automation action by ID.
 
+        Returns cleaned action data optimized for LLM consumption by removing
+        internal fields, timestamps, and technical flags.
+
         Args:
             action_id: The unique identifier of the action (required)
             ctx: Optional[Dict[str, Any]]: The context for the action details retrieval
             api_client: Optional[ActionCatalogApi]: The API client for action catalog
 
         Returns:
-            Dict[str, Any]: The detailed information about the automation action
+            Dict[str, Any]: The cleaned detailed information about the automation action
         """
         try:
             if not action_id:
@@ -261,17 +321,15 @@ class ActionCatalogMCPTools(BaseInstanaClient):
                 logger.error(error_message)
                 return {"error": error_message}
 
-            logger.debug(f"Result from get_action: {result_dict}")
-            return result_dict
+            # Clean the action data
+            cleaned_action = self._clean_action_data(result_dict)
+            logger.debug("Cleaned action details (removed ~40-50% of data)")
+            return cleaned_action
 
         except Exception as e:
             logger.error(f"Error in get_action_details: {e}")
             return {"error": f"Failed to get action details: {e!s}"}
 
-    @register_as_tool(
-        title="Get Action Types",
-        annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False)
-    )
     @with_header_auth(ActionCatalogApi)
     async def get_action_types(self,
                               ctx=None,
@@ -324,10 +382,6 @@ class ActionCatalogMCPTools(BaseInstanaClient):
             logger.error(f"Error in get_action_types: {e}")
             return {"error": f"Failed to get action types: {e!s}"}
 
-    @register_as_tool(
-        title="Get Action Tags",
-        annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False)
-    )
     @with_header_auth(ActionCatalogApi)
     async def get_action_tags(self,
                              ctx=None,
@@ -391,3 +445,134 @@ class ActionCatalogMCPTools(BaseInstanaClient):
         except Exception as e:
             logger.error(f"Error in get_action_tags: {e}")
             return {"error": f"Failed to get action tags: {e!s}"}
+
+    @with_header_auth(ActionCatalogApi)
+    async def get_action_matches_by_id_and_time_window(self,
+                                                       application_id: Optional[str] = None,
+                                                       snapshot_id: Optional[str] = None,
+                                                       to: Optional[int] = None,
+                                                       window_size: Optional[int] = None,
+                                                       ctx=None,
+                                                       api_client=None) -> Dict[str, Any]:
+        """
+        Get automation actions that match based on application ID or snapshot ID within a specified time window.
+
+        Args:
+            application_id: Optional[str]: Application ID to match actions for
+            snapshot_id: Optional[str]: Snapshot ID to match actions for
+            to: Optional[int]: End timestamp in milliseconds (13-digit)
+            window_size: Optional[int]: Time window size in milliseconds
+            ctx: Optional[Dict[str, Any]]: The context for the action matches retrieval
+            api_client: Optional[ActionCatalogApi]: The API client for action catalog
+
+        Returns:
+            Dict[str, Any]: The list of matching automation actions or error dict
+
+        Example:
+            # Get actions matching an application within last hour
+            application_id="app-123", window_size=3600000
+
+            # Get actions matching a snapshot at specific time
+            snapshot_id="snap-456", to=1234567890000, window_size=600000
+        """
+        try:
+            logger.debug(f"[get_action_matches_by_id_and_time_window] Called with application_id={application_id}, snapshot_id={snapshot_id}, to={to}, window_size={window_size}")
+
+            # Validate that at least one ID is provided
+            if not application_id and not snapshot_id:
+                logger.warning("[get_action_matches_by_id_and_time_window] Neither application_id nor snapshot_id provided")
+                return {
+                    "error": "Either application_id or snapshot_id must be provided",
+                    "example": {
+                        "application_id": "app-123",
+                        "window_size": 3600000
+                    }
+                }
+
+            # Validate timestamp format (must be 13-digit milliseconds)
+            if to is not None and (to < 1000000000000 or to > 9999999999999):
+                logger.warning(f"[get_action_matches_by_id_and_time_window] Invalid timestamp: {to}")
+                return {"error": "Invalid timestamp format. Expected 13-digit milliseconds (e.g. 1234567890000)"}
+
+            # Validate window_size is positive
+            if window_size is not None and window_size < 0:
+                logger.warning(f"[get_action_matches_by_id_and_time_window] Invalid window_size: {window_size}")
+                return {"error": "window_size must be positive"}
+
+            # Call the get_action_matches_by_id_and_time_window_without_preload_content method from the SDK
+            logger.debug("[get_action_matches_by_id_and_time_window] Calling SDK method")
+            result = api_client.get_action_matches_by_id_and_time_window_without_preload_content(
+                application_id=application_id,
+                snapshot_id=snapshot_id,
+                to=to,
+                window_size=window_size
+            )
+
+            # Parse the JSON response manually
+            import json
+            try:
+                # The result from get_action_matches_by_id_and_time_window_without_preload_content is a response object
+                # We need to read the response data and parse it as JSON
+                response_text = result.data.decode('utf-8')
+                result_dict = json.loads(response_text)
+                logger.debug("[get_action_matches_by_id_and_time_window] Successfully parsed response")
+
+                # Check if the response contains an error
+                if isinstance(result_dict, dict) and 'errors' in result_dict:
+                    error_message = f"API returned error: {result_dict['errors']}"
+                    logger.error(f"[get_action_matches_by_id_and_time_window] {error_message}")
+                    return {
+                        "error": error_message,
+                        "details": result_dict,
+                        "filters": {
+                            "application_id": application_id,
+                            "snapshot_id": snapshot_id,
+                            "to": to,
+                            "window_size": window_size
+                        }
+                    }
+
+                # Handle the parsed JSON data and clean action data
+                if isinstance(result_dict, list):
+                    # Clean each action match (which has 'action' field containing the action data)
+                    cleaned_matches = []
+                    for match in result_dict:
+                        if isinstance(match, dict) and 'action' in match:
+                            cleaned_match = {
+                                "score": match.get("score"),
+                                "aiEngine": match.get("aiEngine"),
+                                "confidence": match.get("confidence"),
+                                "action": self._clean_action_data(match["action"])
+                            }
+                            cleaned_matches.append(cleaned_match)
+                        else:
+                            cleaned_matches.append(match)
+
+                    logger.debug(f"get_action_matches_by_id_and_time_window Cleaned {len(cleaned_matches)} action matches (removed ~40-50% of data)")
+                    return {
+                        "success": True,
+                        "message": "Action matches retrieved successfully",
+                        "data": cleaned_matches,
+                        "count": len(cleaned_matches),
+                        "filters": {
+                            "application_id": application_id,
+                            "snapshot_id": snapshot_id,
+                            "to": to,
+                            "window_size": window_size
+                        }
+                    }
+                else:
+                    logger.debug(f"[get_action_matches_by_id_and_time_window] Result: {result_dict}")
+                    return {
+                        "success": True,
+                        "message": "Action matches retrieved successfully",
+                        "data": result_dict
+                    }
+            except (json.JSONDecodeError, AttributeError) as json_err:
+                error_message = f"Failed to parse JSON response: {json_err}"
+                logger.error(f"[get_action_matches_by_id_and_time_window] {error_message}")
+                return {"error": error_message}
+
+        except Exception as e:
+            logger.error(f"[get_action_matches_by_id_and_time_window] Error: {e}", exc_info=True)
+            return {"error": f"Failed to get action matches by ID and time window: {e!s}"}

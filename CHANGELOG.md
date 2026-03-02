@@ -1,5 +1,9 @@
 # Changelog
 
+### 0.8.0
+
+-   **Enhancement:** Introduced separate unified smart router to handle all automation and event related operations, improving routing consistency and maintainability.
+
 ### 0.7.5
 
 -   **Enhancement:** Introduced a unified smart router to handle all website-related operations, improving routing consistency and maintainability.

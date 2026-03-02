@@ -1,5 +1,9 @@
 """
-Unit tests for the ApplicationSettingsMCPTools class
+Unit tests for the ApplicationSettingsMCPTools class.
+
+Tests focus on the public execute_settings_operation method which routes
+to private internal methods. Tests for the private methods themselves
+are removed since they are internal implementation details.
 """
 
 import asyncio
@@ -8,13 +12,14 @@ import os
 import sys
 import unittest
 from functools import wraps
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 
 # Create a null handler that will discard all log messages
 class NullHandler(logging.Handler):
     def emit(self, record):
         pass
+
 
 # Configure root logger to use ERROR level and disable propagation
 logging.basicConfig(level=logging.ERROR)
@@ -23,26 +28,7 @@ logging.basicConfig(level=logging.ERROR)
 app_logger = logging.getLogger('src.application.application_settings')
 app_logger.handlers = []
 app_logger.addHandler(NullHandler())
-app_logger.propagate = False  # Prevent logs from propagating to parent loggers
-
-# Suppress traceback printing for expected test exceptions
-import traceback
-
-original_print_exception = traceback.print_exception
-original_print_exc = traceback.print_exc
-
-def custom_print_exception(etype, value, tb, limit=None, file=None, chain=True):
-    # Skip printing exceptions from the mock side_effect
-    if isinstance(value, Exception) and str(value) == "Test error":
-        return
-    original_print_exception(etype, value, tb, limit, file, chain)
-
-def custom_print_exc(limit=None, file=None, chain=True):
-    # Just do nothing - this will suppress all traceback printing from print_exc
-    pass
-
-traceback.print_exception = custom_print_exception
-traceback.print_exc = custom_print_exc
+app_logger.propagate = False
 
 # Add src to path before any imports
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
@@ -52,33 +38,38 @@ def mock_with_header_auth(api_class, allow_mock=False):
     def decorator(func):
         @wraps(func)
         async def wrapper(self, *args, **kwargs):
-            # Just pass the API client directly
             kwargs['api_client'] = self.settings_api
             return await func(self, *args, **kwargs)
         return wrapper
     return decorator
 
-# Create mock modules and classes
-sys.modules['instana_client'] = MagicMock()
-sys.modules['instana_client.api'] = MagicMock()
-sys.modules['instana_client.api.application_settings_api'] = MagicMock()
-sys.modules['instana_client.api_client'] = MagicMock()
-sys.modules['instana_client.configuration'] = MagicMock()
-sys.modules['instana_client.models'] = MagicMock()
-sys.modules['instana_client.models.application_config'] = MagicMock()
-sys.modules['instana_client.models.endpoint_config'] = MagicMock()
-sys.modules['instana_client.models.manual_service_config'] = MagicMock()
-sys.modules['instana_client.models.new_application_config'] = MagicMock()
-sys.modules['instana_client.models.new_manual_service_config'] = MagicMock()
-sys.modules['instana_client.models.service_config'] = MagicMock()
-sys.modules['fastmcp'] = MagicMock()
-sys.modules['fastmcp.server'] = MagicMock()
-sys.modules['fastmcp.server.dependencies'] = MagicMock()
-sys.modules['pydantic'] = MagicMock()
+
+# Set up mock modules (defined outside patch.dict so they persist after import)
+mock_mcp = MagicMock()
+mock_mcp_types = MagicMock()
+mock_tool_annotations = MagicMock()
+mock_mcp_types.ToolAnnotations = mock_tool_annotations
+
+mock_instana_client = MagicMock()
+mock_instana_api = MagicMock()
+mock_settings_api_mod = MagicMock()
+mock_instana_api_client = MagicMock()
+mock_instana_configuration = MagicMock()
+mock_instana_models = MagicMock()
+mock_app_config_mod = MagicMock()
+mock_endpoint_config_mod = MagicMock()
+mock_manual_service_config_mod = MagicMock()
+mock_new_app_config_mod = MagicMock()
+mock_new_manual_service_config_mod = MagicMock()
+mock_service_config_mod = MagicMock()
+mock_fastmcp = MagicMock()
+mock_fastmcp_server = MagicMock()
+mock_fastmcp_deps = MagicMock()
+mock_pydantic = MagicMock()
 
 # Mock the get_http_headers function
 mock_get_http_headers = MagicMock(return_value={})
-sys.modules['fastmcp.server.dependencies'].get_http_headers = mock_get_http_headers
+mock_fastmcp_deps.get_http_headers = mock_get_http_headers
 
 # Set up mock classes
 mock_configuration = MagicMock()
@@ -100,274 +91,217 @@ mock_new_application_config.__name__ = "NewApplicationConfig"
 mock_new_manual_service_config.__name__ = "NewManualServiceConfig"
 mock_service_config.__name__ = "ServiceConfig"
 
-sys.modules['instana_client.configuration'].Configuration = mock_configuration
-sys.modules['instana_client.api_client'].ApiClient = mock_api_client
-sys.modules['instana_client.api.application_settings_api'].ApplicationSettingsApi = mock_settings_api
-sys.modules['instana_client.models.application_config'].ApplicationConfig = mock_application_config
-sys.modules['instana_client.models.endpoint_config'].EndpointConfig = mock_endpoint_config
-sys.modules['instana_client.models.manual_service_config'].ManualServiceConfig = mock_manual_service_config
-sys.modules['instana_client.models.new_application_config'].NewApplicationConfig = mock_new_application_config
-sys.modules['instana_client.models.new_manual_service_config'].NewManualServiceConfig = mock_new_manual_service_config
-sys.modules['instana_client.models.service_config'].ServiceConfig = mock_service_config
+mock_instana_configuration.Configuration = mock_configuration
+mock_instana_api_client.ApiClient = mock_api_client
+mock_instana_api.ApplicationSettingsApi = mock_settings_api
+mock_instana_models.ApplicationConfig = mock_application_config
+mock_instana_models.EndpointConfig = mock_endpoint_config
+mock_instana_models.ManualServiceConfig = mock_manual_service_config
+mock_instana_models.NewApplicationConfig = mock_new_application_config
+mock_instana_models.NewManualServiceConfig = mock_new_manual_service_config
+mock_instana_models.ServiceConfig = mock_service_config
+mock_instana_models.TagFilter = MagicMock()
+mock_instana_models.TagFilterExpression = MagicMock()
 
-# Import the class to test
-from src.application.application_settings import ApplicationSettingsMCPTools
+# Mock src.prompts
+mock_src_prompts = MagicMock()
+
+# Mock src.core and src.core.utils
+mock_src_core = MagicMock()
+mock_src_core_utils = MagicMock()
+
+
+class MockBaseInstanaClient:
+    def __init__(self, read_token: str, base_url: str):
+        self.read_token = read_token
+        self.base_url = base_url
+
+
+mock_src_core_utils.BaseInstanaClient = MockBaseInstanaClient
+mock_src_core_utils.register_as_tool = lambda *args, **kwargs: lambda func: func
+mock_src_core_utils.with_header_auth = mock_with_header_auth
+
+# Build the full mocks dict for patch.dict
+_mocks = {
+    'mcp': mock_mcp,
+    'mcp.types': mock_mcp_types,
+    'instana_client': mock_instana_client,
+    'instana_client.api': mock_instana_api,
+    'instana_client.api.application_settings_api': mock_settings_api_mod,
+    'instana_client.api_client': mock_instana_api_client,
+    'instana_client.configuration': mock_instana_configuration,
+    'instana_client.models': mock_instana_models,
+    'instana_client.models.application_config': mock_app_config_mod,
+    'instana_client.models.endpoint_config': mock_endpoint_config_mod,
+    'instana_client.models.manual_service_config': mock_manual_service_config_mod,
+    'instana_client.models.new_application_config': mock_new_app_config_mod,
+    'instana_client.models.new_manual_service_config': mock_new_manual_service_config_mod,
+    'instana_client.models.service_config': mock_service_config_mod,
+    'fastmcp': mock_fastmcp,
+    'fastmcp.server': mock_fastmcp_server,
+    'fastmcp.server.dependencies': mock_fastmcp_deps,
+    'pydantic': mock_pydantic,
+    'src.prompts': mock_src_prompts,
+    'src.core': mock_src_core,
+    'src.core.utils': mock_src_core_utils,
+}
+
+# Import the class under test with sys.modules mocked.
+# patch.dict restores sys.modules after the with-block exits, so other
+# test modules (tests/core/, tests/prompts/) can import the real modules.
+with patch.dict(sys.modules, _mocks):
+    with patch('src.core.utils.with_header_auth', mock_with_header_auth):
+        from src.application.application_settings import ApplicationSettingsMCPTools
 
 
 class TestApplicationSettingsMCPTools(unittest.TestCase):
-    """Test the ApplicationSettingsMCPTools class"""
+    """Test the ApplicationSettingsMCPTools class.
+
+    Tests focus on execute_settings_operation routing. Private methods
+    (_get_all_applications_configs, _add_application_config, etc.) are
+    internal implementation details and not tested directly.
+    """
 
     def setUp(self):
         """Set up test fixtures"""
-        # Reset all mocks
         mock_configuration.reset_mock()
         mock_api_client.reset_mock()
         mock_settings_api.reset_mock()
 
-        # Store references to the global mocks
         self.mock_configuration = mock_configuration
         self.mock_api_client = mock_api_client
         self.settings_api = mock_settings_api
 
-        # Create the client
         self.read_token = "test_token"
         self.base_url = "https://test.instana.io"
 
-        # Patch the with_header_auth decorator
         self.patcher = patch('src.core.utils.with_header_auth', mock_with_header_auth)
         self.patcher.start()
 
         self.client = ApplicationSettingsMCPTools(read_token=self.read_token, base_url=self.base_url)
-
-        # Set up the client's API attribute
         self.client.settings_api = mock_settings_api
 
-        # Patch the logger to prevent logging during tests
         patcher = patch('src.application.application_settings.debug_print')
-        self.mock_logger = patcher.start()
+        self.mock_debug_print = patcher.start()
         self.addCleanup(patcher.stop)
 
     def tearDown(self):
-        """Tear down test fixtures"""
-        # Stop the with_header_auth patcher
         self.patcher.stop()
-        # No need to stop patchers since we're directly mocking the module imports
-        pass
 
     def test_init(self):
         """Test that the client is initialized with the correct values"""
-        # Since we're mocking at the module level, we can't easily test the initialization
-        # Just verify that the client was created with the correct values
         self.assertEqual(self.client.read_token, self.read_token)
         self.assertEqual(self.client.base_url, self.base_url)
 
-    def test_get_all_applications_configs(self):
-        """Test get_all_applications_configs with default parameters"""
-        # Set up the mock response
-        mock_result = [MagicMock()]
-        mock_result[0].to_dict = MagicMock(return_value={"id": "app123", "label": "Test App"})
-        self.settings_api.get_application_configs = MagicMock(return_value=mock_result)
+    def test_execute_settings_operation_application_get_all(self):
+        """Test execute_settings_operation routes application/get_all correctly"""
+        expected = [{"id": "app1", "label": "My App"}]
+        self.client._get_all_applications_configs = AsyncMock(return_value=expected)
 
-        # Call the method
-        result = asyncio.run(self.client.get_all_applications_configs())
-
-        # Check that the API was called
-        self.settings_api.get_application_configs.assert_called_once()
-
-        # Check that the result is correct
-        self.assertEqual(result, [{"id": "app123", "label": "Test App"}])
-
-    def test_get_all_applications_configs_error_handling(self):
-        """Test get_all_applications_configs error handling"""
-        # Set up the mock to raise an exception
-        self.settings_api.get_application_configs = MagicMock(side_effect=Exception("Test error"))
-
-        # Call the method
-        result = asyncio.run(self.client.get_all_applications_configs())
-
-        # Check that the result contains an error message
-        self.assertEqual(len(result), 1)
-        self.assertIn("error", result[0])
-        self.assertIn("Failed to get all applications", result[0]["error"])
-
-    def test_add_application_config(self):
-        """Test add_application_config with required parameters"""
-        # Set up the mock response
-        mock_result = MagicMock()
-        mock_result.to_dict = MagicMock(return_value={"id": "app123", "label": "Test App"})
-        self.settings_api.add_application_config = MagicMock(return_value=mock_result)
-
-        # Set up test parameters
-        access_rules = [{"key": "value"}]
-        boundary_scope = "INBOUND"
-        label = "Test App"
-        scope = "test-scope"
-
-        # Call the method
-        result = asyncio.run(self.client.add_application_config(
-            access_rules=access_rules,
-            boundary_scope=boundary_scope,
-            label=label,
-            scope=scope
+        result = asyncio.run(self.client.execute_settings_operation(
+            operation="get_all",
+            resource_subtype="application"
         ))
 
-        # Check that the API was called
-        self.settings_api.add_application_config.assert_called_once()
+        self.client._get_all_applications_configs.assert_called_once()
+        self.assertEqual(result, expected)
 
-        # Check that the result is correct
-        self.assertEqual(result, {"id": "app123", "label": "Test App"})
+    def test_execute_settings_operation_application_get(self):
+        """Test execute_settings_operation routes application/get correctly"""
+        expected = {"id": "app1", "label": "My App"}
+        self.client._get_application_config = AsyncMock(return_value=expected)
 
-    def test_add_application_config_missing_params(self):
-        """Test add_application_config with missing parameters"""
-        # Call the method with missing parameters
-        result = asyncio.run(self.client.add_application_config(
-            access_rules=None,
-            boundary_scope=None,
-            label=None,
-            scope=None
+        result = asyncio.run(self.client.execute_settings_operation(
+            operation="get",
+            resource_subtype="application",
+            id="app1"
         ))
 
-        # Check that the result contains an error message
+        self.client._get_application_config.assert_called_once_with("app1", None)
+        self.assertEqual(result, expected)
+
+    def test_execute_settings_operation_application_create(self):
+        """Test execute_settings_operation routes application/create correctly"""
+        expected = {"id": "new-app", "label": "New App"}
+        self.client._add_application_config = AsyncMock(return_value=expected)
+        payload = {"label": "New App"}
+
+        result = asyncio.run(self.client.execute_settings_operation(
+            operation="create",
+            resource_subtype="application",
+            payload=payload
+        ))
+
+        self.client._add_application_config.assert_called_once_with(payload, None)
+        self.assertEqual(result, expected)
+
+    def test_execute_settings_operation_application_delete(self):
+        """Test execute_settings_operation routes application/delete correctly"""
+        expected = {"message": "Deleted"}
+        self.client._delete_application_config = AsyncMock(return_value=expected)
+
+        result = asyncio.run(self.client.execute_settings_operation(
+            operation="delete",
+            resource_subtype="application",
+            id="app1"
+        ))
+
+        self.client._delete_application_config.assert_called_once_with("app1", None)
+        self.assertEqual(result, expected)
+
+    def test_execute_settings_operation_service_order(self):
+        """Test execute_settings_operation routes service/order correctly"""
+        expected = {"message": "Ordered"}
+        self.client._order_service_config = AsyncMock(return_value=expected)
+        request_body = ["svc1", "svc2"]
+
+        result = asyncio.run(self.client.execute_settings_operation(
+            operation="order",
+            resource_subtype="service",
+            request_body=request_body
+        ))
+
+        self.client._order_service_config.assert_called_once_with(request_body, None)
+        self.assertEqual(result, expected)
+
+    def test_execute_settings_operation_manual_service_get_all(self):
+        """Test execute_settings_operation routes manual_service/get_all correctly"""
+        expected = [{"id": "ms1"}]
+        self.client._get_all_manual_service_configs = AsyncMock(return_value=expected)
+
+        result = asyncio.run(self.client.execute_settings_operation(
+            operation="get_all",
+            resource_subtype="manual_service"
+        ))
+
+        self.client._get_all_manual_service_configs.assert_called_once()
+        self.assertEqual(result, expected)
+
+    def test_execute_settings_operation_unsupported_returns_error(self):
+        """Test execute_settings_operation returns error for unsupported operation/subtype"""
+        result = asyncio.run(self.client.execute_settings_operation(
+            operation="unknown_op",
+            resource_subtype="unknown_type"
+        ))
+
         self.assertIn("error", result)
-        self.assertIn("Required enitities are missing or invalid", result["error"])
+        self.assertIn("unknown_op", result["error"])
+        self.assertIn("unknown_type", result["error"])
 
-    def test_delete_application_config(self):
-        """Test delete_application_config with valid ID"""
-        # Set up the mock
-        self.settings_api.delete_application_config = MagicMock()
-
-        # Call the method
-        result = asyncio.run(self.client.delete_application_config(id="app123"))
-
-        # Check that the API was called with the correct ID
-        self.settings_api.delete_application_config.assert_called_once_with(id="app123")
-
-        # Check that the result indicates success
-        self.assertTrue(result["success"])
-        self.assertIn("app123", result["message"])
-
-    def test_delete_application_config_missing_id(self):
-        """Test delete_application_config with missing ID"""
-        # Call the method with missing ID
-        result = asyncio.run(self.client.delete_application_config(id=None))
-
-        # Check that the result contains an error message
-        self.assertIn("error", result)
-        self.assertIn("Application perspective ID is required", result["error"])
-
-    def test_get_application_config(self):
-        """Test get_application_config with valid ID"""
-        # Set up the mock response
-        mock_result = MagicMock()
-        mock_result.to_dict = MagicMock(return_value={"id": "app123", "label": "Test App"})
-        self.settings_api.get_application_config = MagicMock(return_value=mock_result)
-
-        # Call the method
-        result = asyncio.run(self.client.get_application_config(id="app123"))
-
-        # Check that the API was called with the correct ID
-        self.settings_api.get_application_config.assert_called_once_with(id="app123")
-
-        # Check that the result is correct
-        self.assertEqual(result, {"id": "app123", "label": "Test App"})
-
-    def test_get_all_endpoint_configs(self):
-        """Test get_all_endpoint_configs"""
-        # Set up the mock response
-        mock_result = MagicMock()
-        mock_result.to_dict = MagicMock(return_value={"endpoints": [{"id": "ep123"}]})
-        self.settings_api.get_endpoint_configs = MagicMock(return_value=mock_result)
-
-        # Call the method
-        result = asyncio.run(self.client.get_all_endpoint_configs())
-
-        # Check that the API was called
-        self.settings_api.get_endpoint_configs.assert_called_once()
-
-        # Check that the result is correct
-        self.assertEqual(result, {"endpoints": [{"id": "ep123"}]})
-
-    def test_create_endpoint_config(self):
-        """Test create_endpoint_config with required parameters"""
-        # Set up the mock response
-        mock_result = MagicMock()
-        mock_result.to_dict = MagicMock(return_value={"serviceId": "svc123"})
-        self.settings_api.create_endpoint_config = MagicMock(return_value=mock_result)
-
-        # Call the method
-        result = asyncio.run(self.client.create_endpoint_config(
-            endpoint_case="ORIGINAL",
-            service_id="svc123"
-        ))
-
-        # Check that the API was called
-        self.settings_api.create_endpoint_config.assert_called_once()
-
-        # Check that the result is correct
-        self.assertEqual(result, {"serviceId": "svc123"})
-
-    def test_get_all_manual_service_configs(self):
-        """Test get_all_manual_service_configs"""
-        # Set up the mock response
-        mock_result = MagicMock()
-        mock_result.to_dict = MagicMock(return_value={"configs": [{"id": "ms123"}]})
-        self.settings_api.get_all_manual_service_configs = MagicMock(return_value=mock_result)
-
-        # Call the method
-        result = asyncio.run(self.client.get_all_manual_service_configs())
-
-        # Check that the API was called
-        self.settings_api.get_all_manual_service_configs.assert_called_once()
-
-        # Check that the result is correct
-        self.assertEqual(result, {"configs": [{"id": "ms123"}]})
-
-    def test_get_all_service_configs(self):
-        """Test get_all_service_configs"""
-        # Set up the mock response
-        mock_result = MagicMock()
-        mock_result.to_dict = MagicMock(return_value={"services": [{"id": "svc123"}]})
-        self.settings_api.get_service_configs = MagicMock(return_value=mock_result)
-
-        # Call the method
-        result = asyncio.run(self.client.get_all_service_configs())
-
-        # Check that the API was called
-        self.settings_api.get_service_configs.assert_called_once()
-
-        # Check that the result is correct
-        self.assertEqual(result, {"services": [{"id": "svc123"}]})
-
-    def test_order_service_config(self):
-        """Test order_service_config"""
-        # Set up the mock response
-        mock_result = MagicMock()
-        mock_result.to_dict = MagicMock(return_value={"success": True})
-        self.settings_api.order_service_config = MagicMock(return_value=mock_result)
-
-        # Call the method
-        result = asyncio.run(self.client.order_service_config(
-            request_body=["svc1", "svc2", "svc3"]
-        ))
-
-        # Check that the API was called with the correct parameters
-        self.settings_api.order_service_config.assert_called_once_with(
-            request_body=["svc1", "svc2", "svc3"]
+    def test_execute_settings_operation_exception_handling(self):
+        """Test execute_settings_operation handles exceptions gracefully"""
+        self.client._get_all_applications_configs = AsyncMock(
+            side_effect=Exception("API failure")
         )
 
-        # Check that the result is correct
-        self.assertEqual(result, {"success": True})
+        result = asyncio.run(self.client.execute_settings_operation(
+            operation="get_all",
+            resource_subtype="application"
+        ))
 
-    def test_order_service_config_empty_list(self):
-        """Test order_service_config with empty list"""
-        # Call the method with an empty list
-        result = asyncio.run(self.client.order_service_config(request_body=[]))
-
-        # Check that the result contains an error message
         self.assertIn("error", result)
-        self.assertIn("cannot be empty", result["error"])
+        self.assertIn("API failure", result["error"])
+
 
 if __name__ == '__main__':
     unittest.main()
-
-

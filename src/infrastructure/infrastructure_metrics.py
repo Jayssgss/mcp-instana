@@ -42,7 +42,7 @@ class InfrastructureMetricsMCPTools(BaseInstanaClient):
         super().__init__(read_token=read_token, base_url=base_url)
 
     # @register_as_tool(...)  # Disabled for future reference
-    # Note: Not exposed as direct MCP tool - accessed via smart_router_tool.py
+    # Note: Not exposed as direct MCP tool - accessed via application_smart_router_tool.py
     @with_header_auth(InfrastructureMetricsApi)
     async def get_infrastructure_metrics(self,
                                          offline: Optional[StrictBool] = False,

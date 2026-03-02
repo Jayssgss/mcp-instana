@@ -71,18 +71,10 @@ class MCPState:
     smart_router_custom_dashboard_client: Any = None
     smart_router_events_client: Any = None
     smart_router_website_client: Any = None
+    smart_router_automation_client: Any = None
 
     # Infrastructure - Only the new two-pass elicitation tool
     infra_analyze_new_client: Any = None
-
-    # Automation tools
-    action_catalog_client: Any = None
-    action_history_client: Any = None
-
-    # Website detail tools (used by website smart router)
-    website_metrics_client: Any = None
-    website_catalog_client: Any = None
-    website_configuration_client: Any = None
 
 # Global variables to store credentials for lifespan
 _global_token = None
@@ -235,43 +227,38 @@ async def execute_tool(tool_name: str, arguments: dict, clients_state) -> str:
 def get_client_categories():
     """Get client categories with lazy imports to avoid circular dependencies"""
     try:
-        from src.automation.action_catalog import ActionCatalogMCPTools
-        from src.automation.action_history import ActionHistoryMCPTools
-        from src.core.custom_dashboard_smart_router_tool import (
-            CustomDashboardSmartRouterMCPTool,
-        )
-        from src.core.events_smart_router_tool import SmartRouterEventsMCPTool
-        from src.core.smart_router_tool import SmartRouterMCPTool
-        from src.core.website_smart_router import SmartRouterWebsiteMCPTool
         from src.infrastructure.infrastructure_analyze_new import (
             InfrastructureAnalyzeOption2,
         )
-        from src.settings.custom_dashboard_tools import CustomDashboardMCPTools
-        from src.website.website_catalog import WebsiteCatalogMCPTools
-        from src.website.website_configuration import WebsiteConfigurationMCPTools
-        from src.website.website_metrics import WebsiteMetricsMCPTools
+        from src.router.application_smart_router_tool import SmartRouterMCPTool
+        from src.router.automation_smart_router_tool import AutomationSmartRouterMCPTool
+        from src.router.custom_dashboard_smart_router_tool import (
+            CustomDashboardSmartRouterMCPTool,
+        )
+        from src.router.events_smart_router_tool import SmartRouterEventsMCPTool
+        from src.router.website_smart_router import SmartRouterWebsiteMCPTool
     except ImportError as e:
         logger.warning(f"Could not import client classes: {e}")
         return {}
 
     return {
-        "router": [
+        "app": [
             ('smart_router_client', SmartRouterMCPTool),
-            ('custom_dashboard_smart_router_client', CustomDashboardSmartRouterMCPTool),
-            ('smart_router_events_client', SmartRouterEventsMCPTool),
-            ('smart_router_website_client', SmartRouterWebsiteMCPTool),
         ],
         "infra": [
             ('infra_analyze_new_client', InfrastructureAnalyzeOption2),
         ],
         "automation": [
-            ('action_catalog_client', ActionCatalogMCPTools),
-            ('action_history_client', ActionHistoryMCPTools),
+            ('smart_router_automation_client', AutomationSmartRouterMCPTool),
         ],
         "website": [
-            ('website_metrics_client', WebsiteMetricsMCPTools),
-            ('website_catalog_client', WebsiteCatalogMCPTools),
-            ('website_configuration_client', WebsiteConfigurationMCPTools),
+            ('smart_router_website_client', SmartRouterWebsiteMCPTool),
+        ],
+        "events": [
+            ('smart_router_events_client', SmartRouterEventsMCPTool),
+        ],
+        "settings": [
+            ('smart_router_custom_dashboard_client', CustomDashboardSmartRouterMCPTool),
         ]
     }
 
@@ -450,7 +437,7 @@ def main():
         else:
             set_log_level(args.log_level)
 
-        all_categories = {"router", "infra", "app", "events", "automation", "website", "settings"}
+        all_categories = {"app", "infra", "events", "automation", "website", "settings"}
 
         # Handle --list-tools option
         if args.list_tools:
@@ -478,7 +465,7 @@ def main():
                 enabled = set(all_categories)
 
         if invalid:
-            logger.error(f"Error: Unknown category/categories: {', '.join(invalid)}. Available categories: router, infra, app, events, automation, website, settings")
+            logger.error(f"Error: Unknown category/categories: {', '.join(invalid)}. Available categories: app, infra, events, automation, website, settings")
             sys.exit(2)
 
         # Print enabled tools for user information

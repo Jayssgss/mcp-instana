@@ -90,9 +90,9 @@ class TestMCPServer(unittest.TestCase):
     def test_mcp_state_initialization(self):
         state = MCPState()
         for attr in [
-            'events_client', 'infra_client', 'app_resource_client', 'app_metrics_client',
-            'app_alert_client', 'infra_catalog_client', 'infra_topo_client', 'infra_analyze_client',
-            'infra_metrics_client', 'app_catalog_client', 'app_topology_client', 'app_analyze_client']:
+            'smart_router_client', 'smart_router_custom_dashboard_client',
+            'smart_router_events_client', 'smart_router_website_client',
+            'smart_router_automation_client', 'infra_analyze_new_client']:
             self.assertIsNone(getattr(state, attr))
 
     @patch('src.core.server.get_enabled_client_configs')
@@ -119,13 +119,13 @@ class TestMCPServer(unittest.TestCase):
         mock_events_client = MagicMock()
         mock_events_class.return_value = mock_events_client
         mock_get_configs.return_value = [
-            ('events_client', mock_events_class)
+            ('smart_router_events_client', mock_events_class)
         ]
         token = "test_token"
         base_url = "https://test.instana.io"
         state = create_clients(token, base_url, "events")
-        self.assertIsNone(state.infra_client)
-        self.assertEqual(state.events_client, mock_events_client)
+        self.assertIsNone(state.infra_analyze_new_client)
+        self.assertEqual(state.smart_router_events_client, mock_events_client)
         mock_events_class.assert_called_with(read_token=token, base_url=base_url)
 
     @patch('src.core.server.get_enabled_client_configs')
@@ -414,53 +414,54 @@ class TestPromptCategories(unittest.TestCase):
     @patch('src.core.server.create_clients')
     @patch('src.core.server.logger')
     def test_infra_category_only(self, mock_logger, mock_create_clients, mock_fast_mcp):
-        """Test that only infra prompts are registered when infra category is enabled"""
+        """Test that only events prompts are registered when events category is enabled
+        (infra is a tool-only category with no dedicated prompts)"""
         mock_server = MagicMock()
         mock_fast_mcp.return_value = mock_server
         mock_state = MagicMock()
         mock_create_clients.return_value = mock_state
 
-        # Call create_app with only infra category enabled
-        create_app("test_token", "https://test.instana.io", 8000, "infra")
+        # Call create_app with only events category enabled
+        create_app("test_token", "https://test.instana.io", 8000, "events")
 
-        # Check that only infra prompts were registered
+        # Check that only events prompts were registered (not app)
         registered_categories = []
         for call in mock_logger.info.call_args_list:
             args = call[0]
             if len(args) > 0 and isinstance(args[0], str):
                 if args[0].startswith("  - app:") and "DISABLED" not in args[0]:
                     registered_categories.append("app")
-                if args[0].startswith("  - infra:") and "DISABLED" not in args[0]:
-                    registered_categories.append("infra")
+                if args[0].startswith("  - events:") and "DISABLED" not in args[0]:
+                    registered_categories.append("events")
 
-        self.assertIn("infra", registered_categories)
+        self.assertIn("events", registered_categories)
         self.assertNotIn("app", registered_categories)
 
     @patch('src.core.server.FastMCP')
     @patch('src.core.server.create_clients')
     @patch('src.core.server.logger')
     def test_both_categories(self, mock_logger, mock_create_clients, mock_fast_mcp):
-        """Test that both app and infra prompts are registered when both categories are enabled"""
+        """Test that both app and events prompts are registered when both categories are enabled"""
         mock_server = MagicMock()
         mock_fast_mcp.return_value = mock_server
         mock_state = MagicMock()
         mock_create_clients.return_value = mock_state
 
         # Call create_app with both categories enabled
-        create_app("test_token", "https://test.instana.io", 8000, "app,infra")
+        create_app("test_token", "https://test.instana.io", 8000, "app,events")
 
-        # Check that both app and infra prompts were registered
+        # Check that both app and events prompts were registered
         registered_categories = []
         for call in mock_logger.info.call_args_list:
             args = call[0]
             if len(args) > 0 and isinstance(args[0], str):
                 if args[0].startswith("  - app:") and "DISABLED" not in args[0]:
                     registered_categories.append("app")
-                if args[0].startswith("  - infra:") and "DISABLED" not in args[0]:
-                    registered_categories.append("infra")
+                if args[0].startswith("  - events:") and "DISABLED" not in args[0]:
+                    registered_categories.append("events")
 
         self.assertIn("app", registered_categories)
-        self.assertIn("infra", registered_categories)
+        self.assertIn("events", registered_categories)
 
 
 class TestMCPServerAsync(unittest.TestCase):
@@ -515,8 +516,8 @@ class TestMCPServerAsync(unittest.TestCase):
             async with lifespan(mock_server) as state:
                 mock_logger.error.assert_called_with("Error during lifespan", exc_info=True)
                 self.assertIsInstance(state, MCPState)
-                self.assertIsNone(state.events_client)
-                self.assertIsNone(state.infra_client)
+                self.assertIsNone(state.smart_router_client)
+                self.assertIsNone(state.infra_analyze_new_client)
         asyncio.run(test_lifespan())
 
     def test_execute_tool_success(self):
@@ -530,7 +531,7 @@ class TestMCPServerAsync(unittest.TestCase):
         mock_tool = MagicMock(side_effect=mock_tool_coro)
         mock_client.test_tool = mock_tool
         state = MCPState()
-        state.events_client = mock_client
+        state.smart_router_client = mock_client
 
         async def test_execute():
             tool_name = "test_tool"
@@ -555,7 +556,7 @@ class TestMCPServerAsync(unittest.TestCase):
         mock_tool = MagicMock(side_effect=Exception("Test error"))
         mock_client.test_tool = mock_tool
         state = MCPState()
-        state.events_client = mock_client
+        state.smart_router_client = mock_client
         async def test_execute():
             tool_name = "test_tool"
             arguments = {}

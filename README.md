@@ -687,6 +687,17 @@ Here is an example of a GitHub Copilot response:
     - [x] Get Geo-Location Configuration (operation="get_geo_config")
     - [x] Get IP Masking Configuration (operation="get_ip_masking")
     - [x] Get Geo Mapping Rules (operation="get_geo_rules")
+- [x] **Unified Automation Management** (`manage_automation`)
+  - [x] Action Catalog (resource_type="catalog")
+    - [x] List all available automation actions (operation="get_actions")
+    - [x] Get detailed information about a specific action (operation="get_action_details")
+    - [x] Search for matching actions by name/description (operation="get_action_matches")
+    - [x] Get action matches by application or snapshot ID and time window (operation="get_action_matches_by_id_and_time_window")
+    - [x] Get available action types (operation="get_action_types")
+    - [x] Get available action tags (operation="get_action_tags")
+  - [x] Action History (resource_type="history")
+    - [x] List action execution instances with filtering (operation="list")
+    - [x] Get details of a specific action execution (operation="get_details")
 - [x] **Custom Dashboards** (`manage_custom_dashboards`)
   - [x] Get all custom dashboards
   - [x] Get specific dashboard by ID
@@ -704,15 +715,7 @@ Here is an example of a GitHub Copilot response:
 | `manage_website_resources`                                    | Website Monitoring             | Unified smart router for website analyze, catalog, configuration, and advanced config operations |
 | `manage_custom_dashboards`                                    | Custom Dashboards              | Unified tool for managing custom dashboard CRUD operations |
 | `analyze_infrastructure_elicitation`                          | Infrastructure Analyze         | Two-pass infrastructure analysis with entity/metric elicitation |
-| `get_actions`                                                 | Automation                     | Get available automation actions from action catalog   |
-| `get_action_details`                                          | Automation                     | Get detailed information about a specific action       |
-| `get_action_types`                                            | Automation                     | Get available action types                             |
-| `get_action_tags`                                             | Automation                     | Get available action tags                              |
-| `get_action_matches`                                          | Automation                     | Get action matches for a given search space            |
-| `submit_automation_action`                                    | Automation                     | Submit an automation action for execution              |
-| `get_action_instance_details`                                 | Automation                     | Get details of an automation action run result         |
-| `list_action_instances`                                       | Automation                     | List automation action run results                     |
-| `delete_action_instance`                                      | Automation                     | Delete an automation action run result                 |
+| `manage_automation`                                           | Automation                     | Unified smart router for automation: browse action catalog (get_actions, get_action_details, get_action_matches, get_action_types, get_action_tags) and view execution history (list, get_details) |
 | `manage_events_resources`                                     | Events                         | Unified smart router for events monitoring: get event by ID, get events by IDs, Kubernetes events, agent monitoring, issues, incidents, and changes |
 
 
@@ -739,8 +742,9 @@ The MCP server supports selective tool loading to optimize performance and reduc
   - Flexible metric aggregation, filtering, grouping, and time range queries
 
 - **`automation`**: Automation action tools
-  - Action catalog management and action execution
-  - Action history and instance tracking
+  - `manage_automation`: Unified smart router for automation catalog and execution history
+  - Action Catalog: browse actions, get details, search by name/description, filter by application or snapshot ID
+  - Action History: list execution instances with filtering, get execution details
 
 - **`events`**: Event monitoring tools
   - Events: Kubernetes events, agent monitoring, incidents, issues, changes and system event tracking
