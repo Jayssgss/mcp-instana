@@ -36,7 +36,7 @@ PARAM_NAME = "name"
 PARAM_PAYLOAD = "payload"
 
 
-class SmartRouterWebsiteMCPTool(BaseInstanaClient):
+class WebsiteSmartRouterMCPTool(BaseInstanaClient):
     """
     Smart router for website monitoring operations.
     Routes queries to Website Analyze tools.

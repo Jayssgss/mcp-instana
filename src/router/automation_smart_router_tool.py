@@ -120,21 +120,20 @@ class AutomationSmartRouterMCPTool(BaseInstanaClient):
             operation="get_action_details", params={"action_id": "action-uuid"}
 
             Search for matching actions:
-            operation="get_action_matches", params={
-                "payload": {
-                    "name": "CPU spends significant time waiting for input/output",
-                    "description": "Checks whether the system spends significant time waiting for input/output."
-                },
-                "target_snapshot_id": "snapshot-id"  # optional
-            }
+            operation="get_action_matches"
+            params:
+                - payload (required): dict with "name" and/or "description" fields
+                - target_snapshot_id (optional): snapshot ID to filter results
+            Example: params={"payload": {"name": "CPU spends significant time waiting for input/output", "description": "Checks whether the system spends significant time waiting for input/output."}, "target_snapshot_id": "snapshot-id"}
 
             Get action matches by ID and time window:
-            operation="get_action_matches_by_id_and_time_window", params={
-                "application_id": "app-123",  # optional, either this or snapshot_id required
-                "snapshot_id": "snap-456",  # optional, either this or application_id required
-                "to": 1234567890000,  # optional, timestamp in ms
-                "window_size": 3600000  # optional, milliseconds
-            }
+            operation="get_action_matches_by_id_and_time_window"
+            params:
+                - application_id (optional): application ID (either this or snapshot_id required)
+                - snapshot_id (optional): snapshot ID (either this or application_id required)
+                - to (optional): timestamp in milliseconds
+                - window_size (optional): time window in milliseconds
+            Example: params={"application_id": "app-123", "snapshot_id": "snap-456", "to": 1234567890000, "window_size": 3600000}
 
             Get action types:
             operation="get_action_types"
@@ -146,27 +145,29 @@ class AutomationSmartRouterMCPTool(BaseInstanaClient):
             operations: list, get_details
 
             List action instances:
-            operation="list", params={
-                "window_size": 3600000,  # optional, milliseconds
-                "to": 1234567890000,  # optional, timestamp in ms
-                "page": 1,  # optional
-                "page_size": 50,  # optional
-                "target_snapshot_id": "snapshot-id",  # optional
-                "event_id": "event-id",  # optional
-                "event_specification_id": "spec-id",  # optional
-                "search": "search text",  # optional
-                "types": ["type1", "type2"],  # optional
-                "action_statuses": ["SUCCESS", "FAILED"],  # optional
-                "order_by": "column_name",  # optional
-                "order_direction": "ASC"  # optional
-            }
+            operation="list"
+            params (all optional):
+                - window_size: time window in milliseconds
+                - to: timestamp in milliseconds
+                - page: page number
+                - page_size: items per page
+                - target_snapshot_id: filter by snapshot ID
+                - event_id: filter by event ID
+                - event_specification_id: filter by event specification ID
+                - search: search text
+                - types: list of action types
+                - action_statuses: list of statuses (e.g., ["SUCCESS", "FAILED"])
+                - order_by: column name for sorting
+                - order_direction: "ASC" or "DESC"
+            Example: params={"window_size": 3600000, "to": 1234567890000, "page": 1, "page_size": 50, "target_snapshot_id": "snapshot-id", "event_id": "event-id", "event_specification_id": "spec-id", "search": "search text", "types": ["type1", "type2"], "action_statuses": ["SUCCESS", "FAILED"], "order_by": "column_name", "order_direction": "ASC"}
 
             Get action instance details:
-            operation="get_details", params={
-                "action_instance_id": "instance-uuid",
-                "window_size": 600000,  # optional, default: 10 minutes
-                "to": 1234567890000  # optional, default: current time
-            }
+            operation="get_details"
+            params:
+                - action_instance_id (required): instance UUID
+                - window_size (optional): time window in milliseconds (default: 10 minutes)
+                - to (optional): timestamp in milliseconds (default: current time)
+            Example: params={"action_instance_id": "instance-uuid", "window_size": 600000, "to": 1234567890000}
 
         Args:
             resource_type: "catalog" or "history"
@@ -182,19 +183,13 @@ class AutomationSmartRouterMCPTool(BaseInstanaClient):
             resource_type="catalog", operation="get_actions"
 
             # Search for CPU-related actions
-            resource_type="catalog", operation="get_action_matches", params={
-                "payload": {"name": "CPU", "description": "monitoring"}
-            }
+            resource_type="catalog", operation="get_action_matches", params={"payload": {"name": "CPU", "description": "monitoring"}}
 
             # List recent action executions
-            resource_type="history", operation="list", params={
-                "window_size": 3600000, "page_size": 20
-            }
+            resource_type="history", operation="list", params={"window_size": 3600000, "page_size": 20}
 
             # Get details of a specific execution
-            resource_type="history", operation="get_details", params={
-                "action_instance_id": "instance-uuid"
-            }
+            resource_type="history", operation="get_details", params={"action_instance_id": "instance-uuid"}
         """
         try:
             logger.info(f"Received: resource_type={resource_type}, operation={operation}")

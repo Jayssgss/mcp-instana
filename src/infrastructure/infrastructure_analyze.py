@@ -33,7 +33,7 @@ from src.infrastructure.entity_registry import EntityCapabilityRegistry
 logger = logging.getLogger(__name__)
 
 
-class InfrastructureAnalyzeOption2(BaseInstanaClient):
+class InfrastructureAnalyze(BaseInstanaClient):
     """
     Infrastructure analyze tool using Option 2 architecture.
 
@@ -89,7 +89,7 @@ class InfrastructureAnalyzeOption2(BaseInstanaClient):
         annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False)
     )
     @with_header_auth(InfrastructureAnalyzeApi)
-    async def analyze_infrastructure_elicitation(
+    async def analyze_infrastructure(
         self,
         intent: Optional[str] = None,
         entity: Optional[str] = None,
@@ -145,7 +145,7 @@ class InfrastructureAnalyzeOption2(BaseInstanaClient):
                     text="Error: Invalid input. Provide either (intent + entity) for Pass 1, or (selections) for Pass 2."
                 )]
         except Exception as e:
-            logger.error(f"Error in analyze_infrastructure_elicitation: {e}", exc_info=True)
+            logger.error(f"Error in analyze_infrastructure: {e}", exc_info=True)
             return [TextContent(
                 type="text",
                 text=f"Error: {e!s}"
@@ -307,8 +307,8 @@ class InfrastructureAnalyzeOption2(BaseInstanaClient):
 
         # Build payload using payload compiler
         # For PoC, we'll build a simple payload directly
-        from instana_client.models.cursor_pagination_infra_explore_cursor import (
-            CursorPaginationInfraExploreCursor,
+        from instana_client.models.cursor_pagination import (
+            CursorPagination,
         )
         from instana_client.models.get_infrastructure_groups_query import (
             GetInfrastructureGroupsQuery,
@@ -514,11 +514,11 @@ class InfrastructureAnalyzeOption2(BaseInstanaClient):
 
             logger.info(f"Pagination: pageSize={page_size}, offset={offset}")
 
-        # Build CursorPaginationInfraExploreCursor object
+        # Build CursorPagination object (use camelCase aliases for field names)
         if offset is not None and offset > 0:
-            cursor_pagination = CursorPaginationInfraExploreCursor(retrievalSize=page_size, offset=offset)
+            cursor_pagination = CursorPagination(retrievalSize=page_size, offset=offset)
         else:
-            cursor_pagination = CursorPaginationInfraExploreCursor(retrievalSize=page_size)
+            cursor_pagination = CursorPagination(retrievalSize=page_size)
 
         # Build TimeFrame object - supports both relative and absolute time ranges
         if to_timestamp is not None:

@@ -15,7 +15,7 @@ from src.core.utils import BaseInstanaClient, register_as_tool
 logger = logging.getLogger(__name__)
 
 
-class SmartRouterMCPTool(BaseInstanaClient):
+class ApplicationSmartRouterMCPTool(BaseInstanaClient):
     """
     Smart router that routes queries to Application Metrics, Alert Configuration, and Catalog tools.
     The LLM agent determines the appropriate operation based on query understanding.

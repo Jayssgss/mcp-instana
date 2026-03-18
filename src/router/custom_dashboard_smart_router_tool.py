@@ -45,48 +45,32 @@ class CustomDashboardSmartRouterMCPTool(BaseInstanaClient):
         """
         Unified Instana custom dashboard manager for CRUD operations.
 
-        Operations:
-        - "get_all": Get all custom dashboards
-        - "get": Get a specific dashboard by ID
-        - "create": Create a new custom dashboard
-        - "update": Update an existing custom dashboard
-        - "delete": Delete a custom dashboard
-        - "get_shareable_users": Get shareable users for a dashboard
-        - "get_shareable_api_tokens": Get shareable API tokens for a dashboard
+        Operations: get_all, get, create, update, delete, get_shareable_users, get_shareable_api_tokens
 
         Parameters (params dict):
-        - dashboard_id: Dashboard ID (required for get, update, delete, get_shareable_users, get_shareable_api_tokens)
-        - custom_dashboard: Dashboard configuration payload (required for create, update)
+        - dashboard_id: Dashboard ID (for get, update, delete only)
+        - custom_dashboard: Dashboard config (for create, update) - see model below
+        - query: Search filter (for get_all)
+        - page_size: Items per page (for get_all)
+        - page: Page number, 0-indexed (for get_all)
+        - with_total_hits: Include total count (for get_all)
 
-        Args:
-            operation: Operation to perform
-            params: Operation-specific parameters (optional)
-            ctx: MCP context (internal)
+        Note: get_shareable_users and get_shareable_api_tokens return ALL users/tokens globally, not for a specific dashboard
 
-        Returns:
-            Dictionary with results from the appropriate tool
+        CustomDashboard Model:
+        - title: string (min 1 char) - REQUIRED
+        - accessRules: array[1-64] of {accessType: "READ"|"READ_WRITE", relationType: "USER"|"API_TOKEN"|"ROLE"|"TEAM"|"GLOBAL", relatedId: string|null} - defaults to global READ_WRITE if omitted
+        - widgets: array[0-128] of {id: string(max 64), type: string(min 1), config: object} - defaults to [] if omitted
+
+        Widget Fields (all optional except id, type, config): title (string), x (int 0-11), y (int >=0), width (int 1-12), height (int >=1)
 
         Examples:
-            # Get all dashboards
-            operation="get_all"
-
-            # Get specific dashboard
-            operation="get", params={"dashboard_id": "abc123"}
-
-            # Create dashboard
-            operation="create", params={"custom_dashboard": {"title": "My Dashboard", "widgets": []}}
-
-            # Update dashboard
-            operation="update", params={"dashboard_id": "abc123", "custom_dashboard": {"title": "Updated Dashboard"}}
-
-            # Delete dashboard
-            operation="delete", params={"dashboard_id": "abc123"}
-
-            # Get shareable users
-            operation="get_shareable_users", params={"dashboard_id": "abc123"}
-
-            # Get shareable API tokens
-            operation="get_shareable_api_tokens", params={"dashboard_id": "abc123"}
+        get_all: operation="get_all", params={"page_size": 20, "query": "prod"}
+        get: operation="get", params={"dashboard_id": "abc123"}
+        create: operation="create", params={"custom_dashboard": {"title": "My Dashboard", "accessRules": [{"accessType": "READ_WRITE", "relationType": "GLOBAL"}], "widgets": []}}
+        create with widget: operation="create", params={"custom_dashboard": {"title": "Metrics", "accessRules": [{"accessType": "READ_WRITE", "relationType": "GLOBAL"}], "widgets": [{"id": "w1", "type": "chart", "config": {"metric": "latency"}, "x": 0, "y": 0, "width": 6, "height": 4}]}}
+        update: operation="update", params={"dashboard_id": "abc123", "custom_dashboard": {"title": "Updated", "accessRules": [{"accessType": "READ_WRITE", "relationType": "GLOBAL"}], "widgets": []}}
+        delete: operation="delete", params={"dashboard_id": "abc123"}
         """
         try:
             logger.info(f"Custom Dashboard Smart Router received: operation={operation}")
@@ -107,23 +91,19 @@ class CustomDashboardSmartRouterMCPTool(BaseInstanaClient):
                     "valid_operations": valid_operations
                 }
 
-            # Extract parameters
-            dashboard_id = params.get("dashboard_id")
-            custom_dashboard = params.get("custom_dashboard")
-
             # Route to the dashboard client
             logger.info(f"Routing to Custom Dashboard client for operation: {operation}")
 
+            # Pass the entire params dict - let the operation dispatcher handle parameter mapping
             result = await self.dashboard_client.execute_dashboard_operation(
                 operation=operation,
-                dashboard_id=dashboard_id,
-                custom_dashboard=custom_dashboard,
+                params=params,
                 ctx=ctx
             )
 
             return {
                 "operation": operation,
-                "dashboard_id": dashboard_id if dashboard_id else None,
+                "dashboard_id": params.get("dashboard_id") if params.get("dashboard_id") else None,
                 "results": result
             }
 

@@ -41,8 +41,7 @@ class CustomDashboardMCPTools(BaseInstanaClient):
     async def execute_dashboard_operation(
         self,
         operation: str,
-        dashboard_id: Optional[str] = None,
-        custom_dashboard: Optional[Dict[str, Any]] = None,
+        params: Optional[Dict[str, Any]] = None,
         ctx=None
     ) -> Dict[str, Any]:
         """
@@ -51,16 +50,41 @@ class CustomDashboardMCPTools(BaseInstanaClient):
 
         Args:
             operation: Operation to perform (get_all, get, create, update, delete, get_shareable_users, get_shareable_api_tokens)
-            dashboard_id: Dashboard ID
-            custom_dashboard: Dashboard configuration payload
+            params: Dictionary containing operation-specific parameters:
+                - dashboard_id: Dashboard ID (for get, update, delete, get_shareable_users, get_shareable_api_tokens)
+                - custom_dashboard: Dashboard configuration payload (for create, update)
+                - query: Search query for filtering dashboards (for get_all)
+                - page_size: Number of items per page (for get_all)
+                - page: Page number (for get_all)
+                - with_total_hits: Include total count (for get_all)
             ctx: MCP context
 
         Returns:
             Operation result dictionary
         """
         try:
+            # Initialize params if not provided
+            if params is None:
+                params = {}
+
+            # Extract parameters based on operation
+            dashboard_id = params.get("dashboard_id")
+            custom_dashboard = params.get("custom_dashboard")
+
             if operation == "get_all":
-                return await self.get_custom_dashboards(ctx=ctx)
+                # Extract get_all specific parameters
+                query = params.get("query")
+                page_size = params.get("page_size")
+                page = params.get("page")
+                with_total_hits = params.get("with_total_hits")
+
+                return await self.get_custom_dashboards(
+                    query=query,
+                    page_size=page_size,
+                    page=page,
+                    with_total_hits=with_total_hits,
+                    ctx=ctx
+                )
             elif operation == "get":
                 if not dashboard_id:
                     return {"error": "dashboard_id is required for 'get' operation"}
@@ -80,13 +104,11 @@ class CustomDashboardMCPTools(BaseInstanaClient):
                     return {"error": "dashboard_id is required for 'delete' operation"}
                 return await self.delete_custom_dashboard(dashboard_id=dashboard_id, ctx=ctx)
             elif operation == "get_shareable_users":
-                if not dashboard_id:
-                    return {"error": "dashboard_id is required for 'get_shareable_users' operation"}
-                return await self.get_shareable_users(dashboard_id=dashboard_id, ctx=ctx)
+                # Note: This operation returns ALL shareable users globally, not for a specific dashboard
+                return await self.get_shareable_users(ctx=ctx)
             elif operation == "get_shareable_api_tokens":
-                if not dashboard_id:
-                    return {"error": "dashboard_id is required for 'get_shareable_api_tokens' operation"}
-                return await self.get_shareable_api_tokens(dashboard_id=dashboard_id, ctx=ctx)
+                # Note: This operation returns ALL shareable API tokens globally, not for a specific dashboard
+                return await self.get_shareable_api_tokens(ctx=ctx)
             else:
                 return {"error": f"Operation '{operation}' not supported"}
 
@@ -98,39 +120,59 @@ class CustomDashboardMCPTools(BaseInstanaClient):
 
     @with_header_auth(CustomDashboardsApi)
     async def get_custom_dashboards(self,
-                                   ctx=None, api_client=None) -> Dict[str, Any]:
+                                   query: Optional[str] = None,
+                                   page_size: Optional[int] = None,
+                                   page: Optional[int] = None,
+                                   with_total_hits: Optional[bool] = None,
+                                   ctx=None,
+                                   api_client=None) -> Dict[str, Any]:
         """
         Get all custom dashboards from Instana server.
         Uses api/custom-dashboard endpoint.
+
+        Args:
+            query: Search query to filter dashboards
+            page_size: Number of dashboards per page
+            page: Page number (0-indexed)
+            with_total_hits: Include total count in response
+            ctx: MCP context
+            api_client: API client instance
+
+        Returns:
+            Dictionary containing dashboards list and metadata
         """
         try:
-            logger.debug("Getting custom dashboards from Instana SDK")
+            logger.debug(f"Getting custom dashboards from Instana SDK with query={query}, page_size={page_size}, page={page}, with_total_hits={with_total_hits}")
 
-            # Call the get_custom_dashboards method from the SDK
-            result = api_client.get_custom_dashboards()
+            # Use _without_preload_content to bypass Pydantic validation
+            # This handles cases where API returns None for fields that expect strings
+            result = api_client.get_custom_dashboards_without_preload_content(
+                query=query,
+                page_size=page_size,
+                page=page,
+                with_total_hits=with_total_hits
+            )
 
-            # Convert the result to a dictionary
-            result_dict: Dict[str, Any] = {}
+            # Check HTTP status code
+            if result.status >= 400:
+                error_text = result.data.decode('utf-8') if result.data else "No error details"
+                return {"error": f"API error (status {result.status}): {error_text}"}
 
-            if hasattr(result, 'to_dict'):
-                result_dict = result.to_dict()
-            elif isinstance(result, dict):
-                result_dict = result
-            elif isinstance(result, list):
-                # If it's a list, wrap it in a dictionary
-                result_dict = {"items": result}
-            else:
-                # For any other type, convert to string and wrap
-                result_dict = {"result": str(result)}
+            # Parse the JSON response manually
+            response_text = result.data.decode('utf-8')
+            dashboards_list = json.loads(response_text)
 
-            # Limit the response size
-            if "items" in result_dict and isinstance(result_dict["items"], list):
-                # Limit items to top 10
-                items_list = result_dict["items"]
-                original_count = len(items_list)
-                if original_count > 10:
-                    result_dict["items"] = items_list[:10]
-                    logger.debug(f"Limited response items from {original_count} to 10")
+            # Build result dictionary
+            result_dict = {
+                "items": dashboards_list if isinstance(dashboards_list, list) else [],
+                "count": len(dashboards_list) if isinstance(dashboards_list, list) else 0
+            }
+
+            # Add pagination info if provided
+            if page is not None:
+                result_dict["page"] = page
+            if page_size is not None:
+                result_dict["page_size"] = page_size
 
             try:
                 logger.debug(f"Result from get_custom_dashboards: {json.dumps(result_dict, indent=2)}")
@@ -157,19 +199,18 @@ class CustomDashboardMCPTools(BaseInstanaClient):
 
             logger.debug(f"Getting custom dashboard {dashboard_id} from Instana SDK")
 
-            # Call the get_custom_dashboard method from the SDK
-            result = api_client.get_custom_dashboard(dashboard_id=dashboard_id)
+            # Use _without_preload_content to bypass Pydantic validation
+            # Note: SDK expects 'custom_dashboard_id' not 'dashboard_id'
+            result = api_client.get_custom_dashboard_without_preload_content(custom_dashboard_id=dashboard_id)
 
-            # Convert the result to a dictionary
-            result_dict: Dict[str, Any] = {}
+            # Check HTTP status code
+            if result.status >= 400:
+                error_text = result.data.decode('utf-8') if result.data else "No error details"
+                return {"error": f"API error (status {result.status}): {error_text}"}
 
-            if hasattr(result, 'to_dict'):
-                result_dict = result.to_dict()
-            elif isinstance(result, dict):
-                result_dict = result
-            else:
-                # For any other type, convert to string and wrap
-                result_dict = {"result": str(result)}
+            # Parse the JSON response manually
+            response_text = result.data.decode('utf-8')
+            result_dict = json.loads(response_text)
 
             try:
                 logger.debug(f"Result from get_custom_dashboard: {json.dumps(result_dict, indent=2)}")
@@ -197,27 +238,39 @@ class CustomDashboardMCPTools(BaseInstanaClient):
             logger.debug("Adding custom dashboard to Instana SDK")
             logger.debug(json.dumps(custom_dashboard, indent=2))
 
-            # Add a temporary ID for validation (will be replaced by server)
+            # Prepare dashboard config with required fields
             dashboard_config = custom_dashboard.copy()
+
+            # Add temporary ID for validation (will be replaced by server)
             if 'id' not in dashboard_config:
-                dashboard_config['id'] = ''  # Empty string as placeholder
+                dashboard_config['id'] = ''
+
+            # Ensure widgets field exists (required by model)
+            if 'widgets' not in dashboard_config:
+                dashboard_config['widgets'] = []
+                logger.debug("Added empty widgets array (required field)")
+
+            # Ensure accessRules field exists (required by model)
+            if 'accessRules' not in dashboard_config:
+                dashboard_config['accessRules'] = [
+                    {"accessType": "READ_WRITE", "relationType": "GLOBAL", "relatedId": None}
+                ]
+                logger.debug("Added default global READ_WRITE access rule (required field)")
 
             # Create the CustomDashboard object
             dashboard_obj = CustomDashboard(**dashboard_config)
 
-            # Call the add_custom_dashboard method from the SDK
-            result = api_client.add_custom_dashboard(custom_dashboard=dashboard_obj)
+            # Use _without_preload_content to bypass Pydantic validation on response
+            result = api_client.add_custom_dashboard_without_preload_content(custom_dashboard=dashboard_obj)
 
-            # Convert the result to a dictionary
-            result_dict: Dict[str, Any] = {}
+            # Check HTTP status code
+            if result.status >= 400:
+                error_text = result.data.decode('utf-8') if result.data else "No error details"
+                return {"error": f"API error (status {result.status}): {error_text}"}
 
-            if hasattr(result, 'to_dict'):
-                result_dict = result.to_dict()
-            elif isinstance(result, dict):
-                result_dict = result
-            else:
-                # For any other type, convert to string and wrap
-                result_dict = {"result": str(result)}
+            # Parse the JSON response manually
+            response_text = result.data.decode('utf-8')
+            result_dict = json.loads(response_text)
 
             try:
                 logger.debug(f"Result from add_custom_dashboard: {json.dumps(result_dict, indent=2)}")
@@ -249,25 +302,39 @@ class CustomDashboardMCPTools(BaseInstanaClient):
             logger.debug(f"Updating custom dashboard {dashboard_id} in Instana SDK")
             logger.debug(json.dumps(custom_dashboard, indent=2))
 
-            # Create the CustomDashboard object
-            dashboard_obj = CustomDashboard(**custom_dashboard)
+            # Prepare dashboard config with required fields
+            dashboard_config = custom_dashboard.copy()
 
-            # Call the update_custom_dashboard method from the SDK
-            result = api_client.update_custom_dashboard(
-                dashboard_id=dashboard_id,
+            # Ensure widgets field exists (required by model)
+            if 'widgets' not in dashboard_config:
+                dashboard_config['widgets'] = []
+                logger.debug("Added empty widgets array (required field)")
+
+            # Ensure accessRules field exists (required by model)
+            if 'accessRules' not in dashboard_config:
+                dashboard_config['accessRules'] = [
+                    {"accessType": "READ_WRITE", "relationType": "GLOBAL", "relatedId": None}
+                ]
+                logger.debug("Added default global READ_WRITE access rule (required field)")
+
+            # Create the CustomDashboard object
+            dashboard_obj = CustomDashboard(**dashboard_config)
+
+            # Use _without_preload_content to bypass Pydantic validation on response
+            # Note: SDK expects 'custom_dashboard_id' not 'dashboard_id'
+            result = api_client.update_custom_dashboard_without_preload_content(
+                custom_dashboard_id=dashboard_id,
                 custom_dashboard=dashboard_obj
             )
 
-            # Convert the result to a dictionary
-            result_dict: Dict[str, Any] = {}
+            # Check HTTP status code
+            if result.status >= 400:
+                error_text = result.data.decode('utf-8') if result.data else "No error details"
+                return {"error": f"API error (status {result.status}): {error_text}"}
 
-            if hasattr(result, 'to_dict'):
-                result_dict = result.to_dict()
-            elif isinstance(result, dict):
-                result_dict = result
-            else:
-                # For any other type, convert to string and wrap
-                result_dict = {"result": str(result)}
+            # Parse the JSON response manually
+            response_text = result.data.decode('utf-8')
+            result_dict = json.loads(response_text)
 
             try:
                 logger.debug(f"Result from update_custom_dashboard: {json.dumps(result_dict, indent=2)}")
@@ -294,19 +361,25 @@ class CustomDashboardMCPTools(BaseInstanaClient):
 
             logger.debug(f"Deleting custom dashboard {dashboard_id} from Instana SDK")
 
-            # Call the delete_custom_dashboard method from the SDK
-            result = api_client.delete_custom_dashboard(dashboard_id=dashboard_id)
+            # Use _without_preload_content to bypass Pydantic validation
+            # Note: SDK expects 'custom_dashboard_id' not 'dashboard_id'
+            result = api_client.delete_custom_dashboard_without_preload_content(custom_dashboard_id=dashboard_id)
 
-            # Convert the result to a dictionary
-            result_dict: Dict[str, Any] = {}
+            # Check HTTP status code
+            if result.status >= 400:
+                error_text = result.data.decode('utf-8') if result.data else "No error details"
+                return {"error": f"API error (status {result.status}): {error_text}"}
 
-            if hasattr(result, 'to_dict'):
-                result_dict = result.to_dict()
-            elif isinstance(result, dict):
-                result_dict = result
+            # For DELETE operations, typically returns empty response or success message
+            # Parse response if there's content
+            if result.data:
+                response_text = result.data.decode('utf-8')
+                if response_text.strip():
+                    result_dict = json.loads(response_text)
+                else:
+                    result_dict = {"success": True, "message": f"Dashboard {dashboard_id} deleted"}
             else:
-                # For any other type, convert to string and wrap
-                result_dict = {"result": str(result)}
+                result_dict = {"success": True, "message": f"Dashboard {dashboard_id} deleted"}
 
             try:
                 logger.debug(f"Result from delete_custom_dashboard: {json.dumps(result_dict, indent=2)}")
@@ -321,43 +394,36 @@ class CustomDashboardMCPTools(BaseInstanaClient):
 
     @with_header_auth(CustomDashboardsApi)
     async def get_shareable_users(self,
-                                 dashboard_id: str,
+                                 dashboard_id: Optional[str] = None,
                                  ctx=None, api_client=None) -> Dict[str, Any]:
         """
-        Get shareable users for a custom dashboard from Instana server.
-        Uses api/custom-dashboard/{id}/shareable-users endpoint.
+        Get all users that have access to shareable custom dashboards.
+        Note: This returns ALL users globally, not for a specific dashboard.
+        Uses api/custom-dashboard/shareable-users endpoint.
         """
         try:
-            if not dashboard_id:
-                return {"error": "Dashboard ID is required for this operation"}
+            logger.debug("Getting all shareable users from Instana SDK")
 
-            logger.debug(f"Getting shareable users for dashboard {dashboard_id} from Instana SDK")
+            # Use _without_preload_content to bypass Pydantic validation
+            # Note: This API does not take a dashboard_id - it returns all shareable users globally
+            result = api_client.get_shareable_users_without_preload_content()
 
-            # Call the get_shareable_users method from the SDK
-            result = api_client.get_shareable_users(dashboard_id=dashboard_id)
+            # Check HTTP status code
+            if result.status >= 400:
+                error_text = result.data.decode('utf-8') if result.data else "No error details"
+                return {"error": f"API error (status {result.status}): {error_text}"}
 
-            # Convert the result to a dictionary
-            result_dict: Dict[str, Any] = {}
-
-            if hasattr(result, 'to_dict'):
-                result_dict = result.to_dict()
-            elif isinstance(result, dict):
-                result_dict = result
-            elif isinstance(result, list):
-                # If it's a list, wrap it in a dictionary
-                result_dict = {"items": result}
-            else:
-                # For any other type, convert to string and wrap
-                result_dict = {"result": str(result)}
+            # Parse the JSON response manually
+            response_text = result.data.decode('utf-8')
+            users_list = json.loads(response_text)
 
             # Limit the response size
-            if "items" in result_dict and isinstance(result_dict["items"], list):
-                # Limit items to top 20
-                items_list = result_dict["items"]
-                original_count = len(items_list)
-                if original_count > 20:
-                    result_dict["items"] = items_list[:20]
-                    logger.debug(f"Limited response items from {original_count} to 20")
+            original_count = len(users_list) if isinstance(users_list, list) else 0
+            if isinstance(users_list, list) and original_count > 20:
+                users_list = users_list[:20]
+                logger.debug(f"Limited response items from {original_count} to 20")
+
+            result_dict = {"items": users_list, "count": len(users_list)}
 
             try:
                 logger.debug(f"Result from get_shareable_users: {json.dumps(result_dict, indent=2)}")
@@ -372,43 +438,36 @@ class CustomDashboardMCPTools(BaseInstanaClient):
 
     @with_header_auth(CustomDashboardsApi)
     async def get_shareable_api_tokens(self,
-                                      dashboard_id: str,
+                                      dashboard_id: Optional[str] = None,
                                       ctx=None, api_client=None) -> Dict[str, Any]:
         """
-        Get shareable API tokens for a custom dashboard from Instana server.
-        Uses api/custom-dashboard/{id}/shareable-api-tokens endpoint.
+        Get all API tokens that have access to shareable custom dashboards.
+        Note: This returns ALL API tokens globally, not for a specific dashboard.
+        Uses api/custom-dashboard/shareable-api-tokens endpoint.
         """
         try:
-            if not dashboard_id:
-                return {"error": "Dashboard ID is required for this operation"}
+            logger.debug("Getting all shareable API tokens from Instana SDK")
 
-            logger.debug(f"Getting shareable API tokens for dashboard {dashboard_id} from Instana SDK")
+            # Use _without_preload_content to bypass Pydantic validation
+            # Note: This API does not take a dashboard_id - it returns all shareable tokens globally
+            result = api_client.get_shareable_api_tokens_without_preload_content()
 
-            # Call the get_shareable_api_tokens method from the SDK
-            result = api_client.get_shareable_api_tokens(dashboard_id=dashboard_id)
+            # Check HTTP status code
+            if result.status >= 400:
+                error_text = result.data.decode('utf-8') if result.data else "No error details"
+                return {"error": f"API error (status {result.status}): {error_text}"}
 
-            # Convert the result to a dictionary
-            result_dict: Dict[str, Any] = {}
-
-            if hasattr(result, 'to_dict'):
-                result_dict = result.to_dict()
-            elif isinstance(result, dict):
-                result_dict = result
-            elif isinstance(result, list):
-                # If it's a list, wrap it in a dictionary
-                result_dict = {"items": result}
-            else:
-                # For any other type, convert to string and wrap
-                result_dict = {"result": str(result)}
+            # Parse the JSON response manually
+            response_text = result.data.decode('utf-8')
+            tokens_list = json.loads(response_text)
 
             # Limit the response size
-            if "items" in result_dict and isinstance(result_dict["items"], list):
-                # Limit items to top 10
-                items_list = result_dict["items"]
-                original_count = len(items_list)
-                if original_count > 10:
-                    result_dict["items"] = items_list[:10]
-                    logger.debug(f"Limited response items from {original_count} to 10")
+            original_count = len(tokens_list) if isinstance(tokens_list, list) else 0
+            if isinstance(tokens_list, list) and original_count > 10:
+                tokens_list = tokens_list[:10]
+                logger.debug(f"Limited response items from {original_count} to 10")
+
+            result_dict = {"items": tokens_list, "count": len(tokens_list)}
 
             try:
                 logger.debug(f"Result from get_shareable_api_tokens: {json.dumps(result_dict, indent=2)}")

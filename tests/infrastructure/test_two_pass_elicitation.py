@@ -1,7 +1,7 @@
 """
 Tests for Two-Pass Elicitation Flow
 
-Tests the new analyze_infrastructure_elicitation tool with:
+Tests the new analyze_infrastructure tool with:
 - Pass 1: Intent → Schema Elicitation
 - Pass 2: Selections → API Call
 """
@@ -13,7 +13,7 @@ from unittest.mock import AsyncMock, MagicMock, Mock, patch
 import pytest
 from mcp.types import EmbeddedResource, TextContent, TextResourceContents
 
-from src.infrastructure.infrastructure_analyze_new import InfrastructureAnalyzeOption2
+from src.infrastructure.infrastructure_analyze import InfrastructureAnalyze
 
 
 @pytest.fixture
@@ -80,8 +80,8 @@ def mock_schema_dir(tmp_path):
 
 @pytest.fixture
 def tool_instance(mock_schema_dir):
-    """Create InfrastructureAnalyzeOption2 instance with test schema dir"""
-    return InfrastructureAnalyzeOption2(
+    """Create InfrastructureAnalyze instance with test schema dir"""
+    return InfrastructureAnalyze(
         read_token="test_token",
         base_url="https://test.instana.io",
         schema_dir=mock_schema_dir
@@ -94,7 +94,7 @@ class TestPass1IntentToElicitation:
     @pytest.mark.asyncio
     async def test_pass1_jvm_entity(self, tool_instance):
         """Test Pass 1 with JVM entity"""
-        result = await tool_instance.analyze_infrastructure_elicitation(
+        result = await tool_instance.analyze_infrastructure(
             intent="maximum heap size of JVM on host galactica1",
             entity="jvm"
         )
@@ -123,7 +123,7 @@ class TestPass1IntentToElicitation:
     @pytest.mark.asyncio
     async def test_pass1_kubernetes_pod(self, tool_instance):
         """Test Pass 1 with kubernetes pod entity"""
-        result = await tool_instance.analyze_infrastructure_elicitation(
+        result = await tool_instance.analyze_infrastructure(
             intent="CPU usage of pods in production namespace",
             entity="kubernetes pod"
         )
@@ -140,7 +140,7 @@ class TestPass1IntentToElicitation:
     @pytest.mark.asyncio
     async def test_pass1_ambiguous_kubernetes(self, tool_instance):
         """Test Pass 1 with ambiguous 'kubernetes' entity"""
-        result = await tool_instance.analyze_infrastructure_elicitation(
+        result = await tool_instance.analyze_infrastructure(
             intent="CPU usage",
             entity="kubernetes"
         )
@@ -156,7 +156,7 @@ class TestPass1IntentToElicitation:
     @pytest.mark.asyncio
     async def test_pass1_unknown_entity(self, tool_instance):
         """Test Pass 1 with unknown entity"""
-        result = await tool_instance.analyze_infrastructure_elicitation(
+        result = await tool_instance.analyze_infrastructure(
             intent="some query",
             entity="unknown_entity"
         )
@@ -171,7 +171,7 @@ class TestPass1IntentToElicitation:
     async def test_pass1_entity_resolution_priority(self, tool_instance):
         """Test entity resolution priority (specific before general)"""
         # Test "kubernetes deployment" resolves to deployment, not pod
-        result = await tool_instance.analyze_infrastructure_elicitation(
+        result = await tool_instance.analyze_infrastructure(
             intent="replica count",
             entity="kubernetes deployment"
         )
@@ -211,7 +211,7 @@ class TestPass2SelectionsToAPI:
             ]
         }
 
-        result = await tool_instance.analyze_infrastructure_elicitation(
+        result = await tool_instance.analyze_infrastructure(
             selections=selections,
             api_client=mock_api_client
         )
@@ -231,7 +231,7 @@ class TestPass2SelectionsToAPI:
             "aggregation": "max"
         }
 
-        result = await tool_instance.analyze_infrastructure_elicitation(
+        result = await tool_instance.analyze_infrastructure(
             selections=selections
         )
 
@@ -249,7 +249,7 @@ class TestPass2SelectionsToAPI:
             "aggregation": "max"
         }
 
-        result = await tool_instance.analyze_infrastructure_elicitation(
+        result = await tool_instance.analyze_infrastructure(
             selections=selections
         )
 
@@ -271,7 +271,7 @@ class TestPass2SelectionsToAPI:
             "aggregation": "max"
         }
 
-        result = await tool_instance.analyze_infrastructure_elicitation(
+        result = await tool_instance.analyze_infrastructure(
             selections=selections,
             api_client=mock_api_client
         )
@@ -296,7 +296,7 @@ class TestPass2SelectionsToAPI:
             "aggregation": "max"
         }
 
-        result = await tool_instance.analyze_infrastructure_elicitation(
+        result = await tool_instance.analyze_infrastructure(
             selections=selections,
             api_client=mock_api_client
         )
@@ -314,7 +314,7 @@ class TestInvalidInput:
     @pytest.mark.asyncio
     async def test_no_parameters(self, tool_instance):
         """Test with no parameters"""
-        result = await tool_instance.analyze_infrastructure_elicitation()
+        result = await tool_instance.analyze_infrastructure()
 
         # Should return error
         assert isinstance(result, list)
@@ -325,7 +325,7 @@ class TestInvalidInput:
     @pytest.mark.asyncio
     async def test_intent_without_entity(self, tool_instance):
         """Test with intent but no entity"""
-        result = await tool_instance.analyze_infrastructure_elicitation(
+        result = await tool_instance.analyze_infrastructure(
             intent="some query"
         )
 

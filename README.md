@@ -779,7 +779,7 @@ Here is an example of a GitHub Copilot response:
   - [x] Application Catalog
     - [x] Get application tag catalog
     - [x] Get application metric catalog
-- [x] **Infrastructure Analysis** (`analyze_infrastructure_elicitation`)
+- [x] **Infrastructure Analysis** (`analyze_infrastructure`)
   - [x] Two-pass elicitation for entity/metric queries
   - [x] Dynamic support for all entity types from Instana API catalog (JVM, Kubernetes, Docker, hosts, databases, message queues, and more)
   - [x] Automatically synchronized with your Instana installation's available plugins
@@ -844,7 +844,7 @@ Here is an example of a GitHub Copilot response:
 | `manage_instana_resources`                                    | Application & Infrastructure   | Unified tool for managing application metrics, alert configs, settings, and catalog |
 | `manage_website_resources`                                    | Website Monitoring             | Unified smart router for website analyze, catalog, configuration, and advanced config operations |
 | `manage_custom_dashboards`                                    | Custom Dashboards              | Unified tool for managing custom dashboard CRUD operations |
-| `analyze_infrastructure_elicitation`                          | Infrastructure Analyze         | Two-pass infrastructure analysis with entity/metric elicitation |
+| `analyze_infrastructure`                                      | Infrastructure Analyze         | Two-pass infrastructure analysis with entity/metric elicitation |
 | `manage_automation`                                           | Automation                     | Unified smart router for automation: browse action catalog (get_actions, get_action_details, get_action_matches, get_action_types, get_action_tags) and view execution history (list, get_details) |
 | `manage_events_resources`                                     | Events                         | Unified smart router for events monitoring: get event by ID, get events by IDs, Kubernetes events, agent monitoring, issues, incidents, and changes |
 
@@ -867,7 +867,7 @@ The MCP server supports selective tool loading to optimize performance and reduc
   - Manages shareable users and API tokens for dashboards
 
 - **`infra`**: Infrastructure analysis tools
-  - `analyze_infrastructure_elicitation`: Two-pass infrastructure analysis with entity/metric elicitation
+  - `analyze_infrastructure`: Two-pass infrastructure analysis with entity/metric elicitation
   - Dynamically supports all entity types available in your Instana installation (automatically loaded from API catalog)
   - Includes JVM, Kubernetes, Docker, hosts, databases, message queues, and any custom or newly added entity types
   - Flexible metric aggregation, filtering, grouping, and time range queries

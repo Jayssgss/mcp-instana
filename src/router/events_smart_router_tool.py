@@ -57,7 +57,7 @@ PARAM_EXCLUDE_TRIGGERED_BEFORE = "exclude_triggered_before"
 # Default values
 DEFAULT_MAX_EVENTS = 50
 
-class SmartRouterEventsMCPTool(BaseInstanaClient):
+class EventsSmartRouterMCPTool(BaseInstanaClient):
     """
     Smart router for events monitoring operations.
     Routes queries to Events tools.
