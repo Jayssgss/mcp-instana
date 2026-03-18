@@ -15,7 +15,7 @@ authors = [
     {name = "Riya Kumari", email = "Riya.Kumari3@ibm.com"}
 ]
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.10,<3.13"
 license = {text = "Apache-2.0"}
 
 # ONLY dependencies that are actually imported/used in the code
@@ -25,7 +25,7 @@ dependencies = [
     # MCP SDK for types and annotations
     "mcp",
     # Instana API client - imported in src/event/events_tools.py
-    "instana-client==1.0.4",
+    "instana-client==1.0.6",
     # Lazy imports for Instana SDK - required by instana-client
     "lazy_imports",
     # HTTP client - imported in src/core/utils.py
