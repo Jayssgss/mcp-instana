@@ -13,19 +13,39 @@ class TestInfrastructureResourcesPrompts(unittest.TestCase):
 
     def test_get_infrastructure_monitoring_state_registered(self):
         """Test that get_infrastructure_monitoring_state is registered in the prompt registry."""
-        self.assertIn(InfrastructureResourcesPrompts.get_infrastructure_monitoring_state, PROMPT_REGISTRY)
+        # The registry contains staticmethod objects, so we need to unwrap them
+        func = InfrastructureResourcesPrompts.get_infrastructure_monitoring_state
+        self.assertTrue(any(
+            getattr(item, '__func__', item) == func
+            for item in PROMPT_REGISTRY
+        ))
 
     def test_get_infrastructure_plugin_payload_registered(self):
         """Test that get_infrastructure_plugin_payload is registered in the prompt registry."""
-        self.assertIn(InfrastructureResourcesPrompts.get_infrastructure_plugin_payload, PROMPT_REGISTRY)
+        # The registry contains staticmethod objects, so we need to unwrap them
+        func = InfrastructureResourcesPrompts.get_infrastructure_plugin_payload
+        self.assertTrue(any(
+            getattr(item, '__func__', item) == func
+            for item in PROMPT_REGISTRY
+        ))
 
     def test_get_infrastructure_metrics_snapshot_registered(self):
         """Test that get_infrastructure_metrics_snapshot is registered in the prompt registry."""
-        self.assertIn(InfrastructureResourcesPrompts.get_infrastructure_metrics_snapshot, PROMPT_REGISTRY)
+        # The registry contains staticmethod objects, so we need to unwrap them
+        func = InfrastructureResourcesPrompts.get_infrastructure_metrics_snapshot
+        self.assertTrue(any(
+            getattr(item, '__func__', item) == func
+            for item in PROMPT_REGISTRY
+        ))
 
     def test_post_infrastructure_metrics_snapshot_registered(self):
         """Test that post_infrastructure_metrics_snapshot is registered in the prompt registry."""
-        self.assertIn(InfrastructureResourcesPrompts.post_infrastructure_metrics_snapshot, PROMPT_REGISTRY)
+        # The registry contains staticmethod objects, so we need to unwrap them
+        func = InfrastructureResourcesPrompts.post_infrastructure_metrics_snapshot
+        self.assertTrue(any(
+            getattr(item, '__func__', item) == func
+            for item in PROMPT_REGISTRY
+        ))
 
     def test_get_prompts_returns_all_prompts(self):
         """Test that get_prompts returns all prompts defined in the class."""

@@ -11,7 +11,12 @@ class TestApplicationResourcesPrompts(unittest.TestCase):
 
     def test_application_insights_summary_registered(self):
         """Test that application_insights_summary is registered in the prompt registry."""
-        self.assertIn(ApplicationResourcesPrompts.application_insights_summary, PROMPT_REGISTRY)
+        # The registry contains staticmethod objects, so we need to unwrap them
+        func = ApplicationResourcesPrompts.application_insights_summary
+        self.assertTrue(any(
+            getattr(item, '__func__', item) == func
+            for item in PROMPT_REGISTRY
+        ))
 
     def test_get_prompts_returns_all_prompts(self):
         """Test that get_prompts returns all prompts defined in the class."""

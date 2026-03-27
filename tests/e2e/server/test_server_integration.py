@@ -51,7 +51,7 @@ class TestMCPServerIntegrationE2E:
                 mock_state.app_resource_client.get_applications = MagicMock()
                 mock_create_clients.return_value = mock_state
 
-                server, tool_count = create_app(
+                server, tool_count, port = create_app(
                     instana_credentials["api_token"],
                     instana_credentials["base_url"]
                 )
@@ -67,7 +67,7 @@ class TestMCPServerIntegrationE2E:
         # Mock FastMCP to raise exception on first call, but allow second call for fallback
         with patch('src.core.server.FastMCP') as mock_fastmcp:
             mock_fastmcp.side_effect = [Exception("Server creation failed"), MagicMock()]
-            server, tool_count = create_app(
+            server, tool_count, port = create_app(
                 instana_credentials["api_token"],
                 instana_credentials["base_url"]
             )
@@ -90,7 +90,7 @@ class TestMCPServerIntegrationE2E:
                 mock_state.app_resource_client.get_applications = MagicMock()
                 mock_create_clients.return_value = mock_state
 
-                server, tool_count = create_app(
+                server, tool_count, port = create_app(
                     instana_credentials["api_token"],
                     instana_credentials["base_url"]
                 )
@@ -312,7 +312,7 @@ class TestMCPServerIntegrationE2E:
 
                 # Set environment variable
                 with patch.dict(os.environ, {'INSTANA_ENABLED_TOOLS': 'app,infra'}):
-                    server, tool_count = create_app(
+                    server, tool_count, port = create_app(
                         instana_credentials["api_token"],
                         instana_credentials["base_url"]
                     )
@@ -334,7 +334,7 @@ class TestMCPServerIntegrationE2E:
                 mock_state.app_resource_client.get_applications = MagicMock()
                 mock_create_clients.return_value = mock_state
 
-                server, tool_count = create_app(
+                server, tool_count, port = create_app(
                     instana_credentials["api_token"],
                     instana_credentials["base_url"]
                 )
@@ -521,7 +521,7 @@ class TestMCPServerIntegrationE2E:
                     # Mock the tool registration to raise an exception
                     mock_server.tool.side_effect = Exception("Tool registration failed")
 
-                    server, tool_count = create_app(
+                    server, tool_count, port = create_app(
                         instana_credentials["api_token"],
                         instana_credentials["base_url"]
                     )
@@ -545,7 +545,7 @@ class TestMCPServerIntegrationE2E:
                 mock_state.app_resource_client.get_applications = MagicMock()
                 mock_create_clients.return_value = mock_state
 
-                server, tool_count = create_app(
+                server, tool_count, port = create_app(
                     instana_credentials["api_token"],
                     instana_credentials["base_url"]
                 )
@@ -563,7 +563,7 @@ class TestMCPServerIntegrationE2E:
         with patch('sys.argv', ['mcp_server.py', '--transport', 'stdio']):
             with patch('src.core.server.create_app') as mock_create_app:
                 mock_server = MagicMock()
-                mock_create_app.return_value = (mock_server, 5)
+                mock_create_app.return_value = (mock_server, 5, 8080)
 
                 with patch('src.core.server.FastMCP') as mock_fastmcp:
                     mock_fastmcp.return_value = mock_server
@@ -624,7 +624,7 @@ class TestMCPServerIntegrationE2E:
         with patch('sys.argv', ['mcp_server.py', '--disable', 'events,infra']):
             with patch('src.core.server.create_app') as mock_create_app:
                 mock_server = MagicMock()
-                mock_create_app.return_value = (mock_server, 3)
+                mock_create_app.return_value = (mock_server, 3, 8080)
 
                 with patch('src.core.server.FastMCP') as mock_fastmcp:
                     mock_fastmcp.return_value = mock_server
@@ -664,7 +664,7 @@ class TestMCPServerIntegrationE2E:
         with patch('sys.argv', ['mcp_server.py', '--transport', 'streamable-http', '--debug']):
             with patch('src.core.server.create_app') as mock_create_app:
                 mock_server = MagicMock()
-                mock_create_app.return_value = (mock_server, 5)
+                mock_create_app.return_value = (mock_server, 5, 8080)
 
                 with patch('src.core.server.FastMCP') as mock_fastmcp:
                     mock_fastmcp.return_value = mock_server
@@ -687,7 +687,7 @@ class TestMCPServerIntegrationE2E:
         with patch('sys.argv', ['mcp_server.py']):
             with patch('src.core.server.create_app') as mock_create_app:
                 mock_server = MagicMock()
-                mock_create_app.return_value = (mock_server, 0)
+                mock_create_app.return_value = (mock_server, 0, 8080)
 
                 with patch('src.core.server.FastMCP') as mock_fastmcp:
                     mock_fastmcp.return_value = mock_server
@@ -716,7 +716,7 @@ class TestMCPServerIntegrationE2E:
         with patch('sys.argv', ['mcp_server.py', '--transport', 'streamable-http']):
             with patch('src.core.server.create_app') as mock_create_app:
                 mock_server = MagicMock()
-                mock_create_app.return_value = (mock_server, 5)
+                mock_create_app.return_value = (mock_server, 5, 8080)
 
                 with patch('src.core.server.FastMCP') as mock_fastmcp:
                     mock_fastmcp.return_value = mock_server
@@ -746,7 +746,7 @@ class TestMCPServerIntegrationE2E:
         with patch('sys.argv', ['mcp_server.py']):
             with patch('src.core.server.create_app') as mock_create_app:
                 mock_server = MagicMock()
-                mock_create_app.return_value = (mock_server, 5)
+                mock_create_app.return_value = (mock_server, 5, 8080)
 
                 with patch('src.core.server.FastMCP') as mock_fastmcp:
                     mock_fastmcp.return_value = mock_server
@@ -797,7 +797,7 @@ class TestMCPServerIntegrationE2E:
             with patch('sys.argv', ['mcp_server.py']):
                 with patch('src.core.server.create_app') as mock_create_app:
                     mock_server = MagicMock()
-                    mock_create_app.return_value = (mock_server, 5)
+                    mock_create_app.return_value = (mock_server, 5, 8080)
 
                     with patch('src.core.server.FastMCP') as mock_fastmcp:
                         mock_fastmcp.return_value = mock_server

@@ -73,6 +73,7 @@ class MCPState:
     smart_router_website_client: Any = None
     smart_router_automation_client: Any = None
     smart_router_slo_client: Any = None
+    smart_router_releases_client: Any = None
 
     # Infrastructure - Only the new two-pass elicitation tool
     infra_analyze_new_client: Any = None
@@ -129,10 +130,10 @@ async def lifespan(server: FastMCP) -> AsyncIterator[MCPState]:
         # Yield empty state if client creation failed
         yield MCPState()
 
-def create_app(token: str, base_url: str, port: int = int(os.getenv("PORT", "8080")), enabled_categories: str = "all") -> tuple[FastMCP, int]:
+def create_app(token: str, base_url: str, port: int = int(os.getenv("PORT", "8080")), enabled_categories: str = "all") -> tuple[FastMCP, int, int]:
     """Create and configure the MCP server with the given credentials."""
     try:
-        server = FastMCP(name="Instana MCP Server", host="0.0.0.0", port=port)
+        server = FastMCP(name="Instana MCP Server")
 
         # Only create and register enabled clients/tools
         clients_state = create_clients(token, base_url, enabled_categories)
@@ -201,12 +202,12 @@ def create_app(token: str, base_url: str, port: int = int(os.getenv("PORT", "808
             logger.info(f"  - uncategorized: {uncategorized_count} prompts")
 
 
-        return server, tools_registered
+        return server, tools_registered, port
 
     except Exception:
         logger.error("Error creating app", exc_info=True)
         fallback_server = FastMCP("Instana Tools")
-        return fallback_server, 0  # Return a tuple with 0 tools registered
+        return fallback_server, 0, port  # Return a tuple with 0 tools registered and port
 
 async def execute_tool(tool_name: str, arguments: dict, clients_state) -> str:
     """Execute a tool and return result"""
@@ -239,6 +240,7 @@ def get_client_categories():
             CustomDashboardSmartRouterMCPTool,
         )
         from src.router.events_smart_router_tool import EventsSmartRouterMCPTool
+        from src.router.releases_smart_router_tool import ReleasesSmartRouterMCPTool
         from src.router.slo_smart_router_tool import SLOSmartRouterMCPTool
         from src.router.website_smart_router import WebsiteSmartRouterMCPTool
     except ImportError as e:
@@ -266,6 +268,9 @@ def get_client_categories():
         ],
         "slo": [
             ('smart_router_slo_client', SLOSmartRouterMCPTool),
+        ],
+        "releases": [
+            ('smart_router_releases_client', ReleasesSmartRouterMCPTool),
         ]
     }
 
@@ -444,7 +449,7 @@ def main():
         else:
             set_log_level(args.log_level)
 
-        all_categories = {"app", "infra", "events", "automation", "website", "settings", "slo"}
+        all_categories = {"app", "infra", "events", "automation", "website", "settings", "slo", "releases"}
 
         # Handle --list-tools option
         if args.list_tools:
@@ -509,7 +514,7 @@ def main():
             enabled_categories = ",".join(enabled)
             # Ensure create_app is always called, even if credentials are missing
             # This is needed for test_main_function_missing_token
-            app, registered_tool_count = create_app(INSTANA_API_TOKEN, INSTANA_BASE_URL, args.port, enabled_categories)
+            app, registered_tool_count, port = create_app(INSTANA_API_TOKEN, INSTANA_BASE_URL, args.port, enabled_categories)
         except Exception as e:
             print(f"Failed to create MCP server: {e}", file=sys.stderr)
             sys.exit(1)
@@ -520,7 +525,7 @@ def main():
                 logger.info(f"FastMCP instance: {app}")
                 logger.info(f"Registered tools: {registered_tool_count}")
             try:
-                app.run(transport="streamable-http")
+                app.run(transport="streamable-http", host="0.0.0.0", port=port)
             except Exception as e:
                 logger.error(f"Failed to start HTTP server: {e}")
                 if args.debug:

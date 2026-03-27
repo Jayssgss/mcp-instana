@@ -11,31 +11,66 @@ class TestApplicationSettingsPrompts(unittest.TestCase):
 
     def test_get_all_applications_configs_registered(self):
         """Test that get_all_applications_configs is registered in the prompt registry."""
-        self.assertIn(ApplicationSettingsPrompts.get_all_applications_configs, PROMPT_REGISTRY)
+        # The registry contains staticmethod objects, so we need to unwrap them
+        func = ApplicationSettingsPrompts.get_all_applications_configs
+        self.assertTrue(any(
+            getattr(item, '__func__', item) == func
+            for item in PROMPT_REGISTRY
+        ))
 
     def test_get_application_config_registered(self):
         """Test that get_application_config is registered in the prompt registry."""
-        self.assertIn(ApplicationSettingsPrompts.get_application_config, PROMPT_REGISTRY)
+        # The registry contains staticmethod objects, so we need to unwrap them
+        func = ApplicationSettingsPrompts.get_application_config
+        self.assertTrue(any(
+            getattr(item, '__func__', item) == func
+            for item in PROMPT_REGISTRY
+        ))
 
     def test_get_all_endpoint_configs_registered(self):
         """Test that get_all_endpoint_configs is registered in the prompt registry."""
-        self.assertIn(ApplicationSettingsPrompts.get_all_endpoint_configs, PROMPT_REGISTRY)
+        # The registry contains staticmethod objects, so we need to unwrap them
+        func = ApplicationSettingsPrompts.get_all_endpoint_configs
+        self.assertTrue(any(
+            getattr(item, '__func__', item) == func
+            for item in PROMPT_REGISTRY
+        ))
 
     def test_get_endpoint_config_registered(self):
         """Test that get_endpoint_config is registered in the prompt registry."""
-        self.assertIn(ApplicationSettingsPrompts.get_endpoint_config, PROMPT_REGISTRY)
+        # The registry contains staticmethod objects, so we need to unwrap them
+        func = ApplicationSettingsPrompts.get_endpoint_config
+        self.assertTrue(any(
+            getattr(item, '__func__', item) == func
+            for item in PROMPT_REGISTRY
+        ))
 
     def test_get_all_manual_service_configs_registered(self):
         """Test that get_all_manual_service_configs is registered in the prompt registry."""
-        self.assertIn(ApplicationSettingsPrompts.get_all_manual_service_configs, PROMPT_REGISTRY)
+        # The registry contains staticmethod objects, so we need to unwrap them
+        func = ApplicationSettingsPrompts.get_all_manual_service_configs
+        self.assertTrue(any(
+            getattr(item, '__func__', item) == func
+            for item in PROMPT_REGISTRY
+        ))
 
     def test_add_manual_service_config_registered(self):
         """Test that add_manual_service_config is registered in the prompt registry."""
-        self.assertIn(ApplicationSettingsPrompts.add_manual_service_config, PROMPT_REGISTRY)
+        # The registry contains staticmethod objects, so we need to unwrap them
+        func = ApplicationSettingsPrompts.add_manual_service_config
+        self.assertTrue(any(
+            getattr(item, '__func__', item) == func
+            for item in PROMPT_REGISTRY
+        ))
 
     def test_get_service_config_registered(self):
         """Test that get_service_config is registered in the prompt registry."""
-        self.assertIn(ApplicationSettingsPrompts.get_service_config, PROMPT_REGISTRY)
+        # The registry contains staticmethod objects, so we need to unwrap them
+        func = ApplicationSettingsPrompts.get_service_config
+        self.assertTrue(any(
+            getattr(item, '__func__', item) == func
+            for item in PROMPT_REGISTRY
+        ))
 
     def test_get_prompts_returns_all_prompts(self):
         """Test that get_prompts returns all prompts defined in the class."""

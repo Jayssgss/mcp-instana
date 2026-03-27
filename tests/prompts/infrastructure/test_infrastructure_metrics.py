@@ -13,7 +13,12 @@ class TestInfrastructureMetricsPrompts(unittest.TestCase):
 
     def test_get_infrastructure_metrics_registered(self):
         """Test that get_infrastructure_metrics is registered in the prompt registry."""
-        self.assertIn(InfrastructureMetricsPrompts.get_infrastructure_metrics, PROMPT_REGISTRY)
+        # The registry contains staticmethod objects, so we need to unwrap them
+        func = InfrastructureMetricsPrompts.get_infrastructure_metrics
+        self.assertTrue(any(
+            getattr(item, '__func__', item) == func
+            for item in PROMPT_REGISTRY
+        ))
 
     def test_get_prompts_returns_all_prompts(self):
         """Test that get_prompts returns all prompts defined in the class."""

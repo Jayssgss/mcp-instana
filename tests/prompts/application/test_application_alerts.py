@@ -11,19 +11,39 @@ class TestApplicationAlertsPrompts(unittest.TestCase):
 
     def test_app_alerts_list_registered(self):
         """Test that app_alerts_list is registered in the prompt registry."""
-        self.assertIn(ApplicationAlertsPrompts.app_alerts_list, PROMPT_REGISTRY)
+        # The registry contains staticmethod objects, so we need to unwrap them
+        func = ApplicationAlertsPrompts.app_alerts_list
+        self.assertTrue(any(
+            getattr(item, '__func__', item) == func
+            for item in PROMPT_REGISTRY
+        ))
 
     def test_app_alert_details_registered(self):
         """Test that app_alert_details is registered in the prompt registry."""
-        self.assertIn(ApplicationAlertsPrompts.app_alert_details, PROMPT_REGISTRY)
+        # The registry contains staticmethod objects, so we need to unwrap them
+        func = ApplicationAlertsPrompts.app_alert_details
+        self.assertTrue(any(
+            getattr(item, '__func__', item) == func
+            for item in PROMPT_REGISTRY
+        ))
 
     def test_app_alert_config_delete_registered(self):
         """Test that app_alert_config_delete is registered in the prompt registry."""
-        self.assertIn(ApplicationAlertsPrompts.app_alert_config_delete, PROMPT_REGISTRY)
+        # The registry contains staticmethod objects, so we need to unwrap them
+        func = ApplicationAlertsPrompts.app_alert_config_delete
+        self.assertTrue(any(
+            getattr(item, '__func__', item) == func
+            for item in PROMPT_REGISTRY
+        ))
 
     def test_app_alert_config_enable_registered(self):
         """Test that app_alert_config_enable is registered in the prompt registry."""
-        self.assertIn(ApplicationAlertsPrompts.app_alert_config_enable, PROMPT_REGISTRY)
+        # The registry contains staticmethod objects, so we need to unwrap them
+        func = ApplicationAlertsPrompts.app_alert_config_enable
+        self.assertTrue(any(
+            getattr(item, '__func__', item) == func
+            for item in PROMPT_REGISTRY
+        ))
 
     def test_get_prompts_returns_all_prompts(self):
         """Test that get_prompts returns all prompts defined in the class."""

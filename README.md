@@ -848,7 +848,8 @@ Here is an example of a GitHub Copilot response:
 | `manage_automation`                                           | Automation                     | Unified smart router for automation: browse action catalog (get_actions, get_action_details, get_action_matches, get_action_types, get_action_tags) and view execution history (list, get_details) |
 | `manage_events_resources`                                     | Events                         | Unified smart router for events monitoring: get event by ID, get events by IDs, Kubernetes events, agent monitoring, issues, incidents, and changes |
 | `manage_slo`                                                  | SLO Management                 | Unified smart router for SLO configurations, reports, alerts, and correction windows with intelligent timezone handling |
-
+| `manage_slo`                                                  | SLO Management                 | Unified smart router for SLO configurations, reports, alerts, and correction windows with intelligent timezone handling |
+| `manage_releases`                                             | Release Management             | Unified smart router for release tracking: list releases with pagination and name filtering, get release details, create/update/delete releases with timezone support |
 
 ## Tool Filtering
 
@@ -896,6 +897,15 @@ The MCP server supports selective tool loading to optimize performance and reduc
   - **Intelligent Timezone Handling**: Automatic timezone elicitation for datetime inputs to ensure accurate time context
   - **Two-Pass Elicitation**: Interactive parameter gathering for complex operations requiring multiple inputs
 
+- **`releases`**: Release tracking and deployment management
+  - `manage_releases`: Unified smart router for release operations
+  - **List Releases**: Get all releases with efficient pagination (page_number, page_size) and name-based filtering
+  - **Release Details**: Retrieve specific release information by ID including applications, services, and scopes
+  - **Create/Update/Delete**: Full CRUD operations for release management
+  - **Intelligent Timezone Handling**: Automatic timezone elicitation for release start times
+  - **Efficient Pagination**: Avoid redundant data fetching with proper page-based navigation
+  - **Name Filtering**: Case-insensitive substring matching to find releases by name
+
 ### Usage Examples
 
 #### Using CLI (PyPI Installation)
@@ -915,6 +925,9 @@ mcp-instana --tools events,website --transport streamable-http
 
 # Enable dashboard and router tools
 mcp-instana --tools dashboard,router --transport streamable-http
+
+# Enable releases and events tools
+mcp-instana --tools releases,events --transport streamable-http
 
 # Enable all tools (default behavior)
 mcp-instana --transport streamable-http
@@ -941,6 +954,9 @@ uv run src/core/server.py --tools events,website --transport streamable-http
 # Enable dashboard and router tools
 uv run src/core/server.py --tools dashboard,router --transport streamable-http
 
+# Enable releases and events tools
+uv run src/core/server.py --tools releases,events --transport streamable-http
+
 # Enable all tools (default behavior)
 uv run src/core/server.py --transport streamable-http
 
@@ -955,337 +971,66 @@ uv run src/core/server.py --list-tools
 - **Clarity**: Focus on specific use cases (e.g., only infrastructure monitoring)
 - **Resource Efficiency**: Lower CPU and network usage
 
-## SLO Smart Router
+## SLO Management
 
-The SLO Smart Router (`manage_slo`) is a unified tool that provides comprehensive Service Level Objective (SLO) management capabilities. It intelligently routes operations to specialized handlers for configurations, reports, alerts, and correction windows.
+The SLO Management tool (`manage_slo`) provides comprehensive Service Level Objective management with intelligent routing to specialized handlers.
 
-### Architecture
+### Available Resource Types
 
-The smart router acts as a single entry point for all SLO-related operations, routing requests to four specialized clients:
+- **configuration**: SLO definitions and targets
+  - Create, read, update, delete SLO configurations
+  - Support for time-based and event-based indicators
+  - Application and service scoping
 
-1. **SLO Configuration Client** - Manages SLO definitions and targets
-2. **SLO Report Client** - Generates performance reports and metrics
-3. **SLO Alert Client** - Handles alert configurations for SLO violations
-4. **SLO Correction Client** - Manages maintenance windows and corrections
+- **report**: Performance reports and metrics
+  - Generate detailed SLO reports with SLI values and error budgets
+  - Time-series charts and burn rate analysis
+  - Correction window exclusions
+
+- **alert**: Alert configurations for SLO violations
+  - Error budget monitoring and burn rate tracking
+  - Configurable thresholds and notification channels
+  - Enable/disable alert management
+
+- **correction**: Maintenance windows and corrections
+  - Planned downtime exclusions from SLO calculations
+  - Recurring maintenance schedules
+  - Active/inactive window management
 
 ### Key Features
 
-#### 1. Unified Interface
-- Single tool (`manage_slo`) for all SLO operations
-- Consistent parameter structure across all resource types
-- Simplified API surface for AI agents and developers
+- **Unified Interface**: Single tool for all SLO operations with consistent parameter structure
+- **Intelligent Timezone Handling**: Automatic timezone elicitation for datetime inputs (format: `"datetime|timezone"`)
+- **Two-Pass Elicitation**: Interactive parameter gathering for complex operations
+- **Resource Type Routing**: Intelligent routing to specialized clients based on resource type
 
-#### 2. Intelligent Timezone Handling
-- Automatic timezone elicitation for datetime inputs
-- Supports multiple datetime formats (ISO 8601, human-readable)
-- Timezone-aware conversions to prevent time-related errors
-- Format: `"datetime|timezone"` (e.g., `"10 March 2026, 2:00 PM|IST"`)
+## Release Management
 
-#### 3. Two-Pass Elicitation
-- Interactive parameter gathering for complex operations
-- Validates required fields before API calls
-- Provides helpful error messages and suggestions
-- Reduces failed API requests due to missing parameters
+The Release Management tool (`manage_releases`) provides release tracking and deployment management with efficient pagination and name-based filtering.
 
-#### 4. Resource Type Routing
-The router supports four resource types:
-- `configuration` - SLO definitions and targets
-- `report` - Performance reports and metrics
-- `alert` - Alert configurations for SLO violations
-- `correction` - Maintenance windows and corrections
+### Available Operations
 
-### Usage Examples
+- **get_all_releases**: List releases with pagination and filtering
+  - Supports time-range filtering (`var_from`, `to`)
+  - Name-based filtering with case-insensitive substring matching
+  - Efficient pagination with `page_number` and `page_size`
+  - Returns navigation metadata (`has_next_page`, `has_previous_page`, `total_pages`)
 
-#### Configuration Management
+- **get_release**: Get specific release details by ID
 
-```python
-# List all SLO configurations
-resource_type="configuration"
-operation="get_all"
-params={"page_size": 20, "query": "api"}
+- **create_release**: Create new release with applications and services
 
-# Get specific SLO by ID
-resource_type="configuration"
-operation="get_by_id"
-params={"id": "slo-abc123"}
+- **update_release**: Update existing release configuration
 
-# Create new SLO configuration
-resource_type="configuration"
-operation="create"
-params={
-    "payload": {
-        "name": "API Latency SLO",
-        "entity": {
-            "type": "application",
-            "applicationId": "app-123",
-            "boundaryScope": "ALL"
-        },
-        "indicator": {
-            "type": "timeBased",
-            "blueprint": "latency",
-            "threshold": 100,
-            "aggregation": "P95"
-        },
-        "target": 0.95,
-        "timeWindow": {
-            "type": "rolling",
-            "duration": 7,
-            "durationUnit": "day"
-        },
-        "tags": ["production", "api"]
-    }
-}
+- **delete_release**: Delete a release by ID
 
-# Update SLO configuration (requires complete payload)
-resource_type="configuration"
-operation="update"
-params={
-    "id": "slo-abc123",
-    "payload": {
-        # Complete SLO configuration with updated fields
-    }
-}
+### Key Features
 
-# Delete SLO configuration
-resource_type="configuration"
-operation="delete"
-params={"id": "slo-abc123"}
-```
+- **Efficient Pagination**: Page-based navigation avoids redundant data fetching (replaces old `max_results` approach)
+- **Name Filtering**: Case-insensitive substring matching on release names
+- **Timezone Support**: Automatic timezone elicitation for datetime inputs
+- **Token Efficiency**: Fetch only needed data, reducing LLM context consumption
 
-#### Report Generation
-
-```python
-# Generate SLO report with timezone-aware datetime
-resource_type="report"
-operation="get"
-params={
-    "slo_id": "slo-abc123",
-    "var_from": "10 March 2026, 2:00 PM|IST",
-    "to": "17 March 2026, 2:00 PM|IST"
-}
-
-# Report with Unix timestamps (milliseconds)
-resource_type="report"
-operation="get"
-params={
-    "slo_id": "slo-abc123",
-    "var_from": "1741604400000",
-    "to": "1742209200000"
-}
-
-# Report with correction window exclusions
-resource_type="report"
-operation="get"
-params={
-    "slo_id": "slo-abc123",
-    "var_from": "10 March 2026, 2:00 PM|UTC",
-    "to": "17 March 2026, 2:00 PM|UTC",
-    "exclude_correction_id": "correction-xyz"
-}
-```
-
-#### Alert Configuration
-
-```python
-# Find active alerts for an SLO
-resource_type="alert"
-operation="find_active"
-params={"slo_id": "slo-abc123"}
-
-# Get alert configuration by ID
-resource_type="alert"
-operation="find"
-params={"id": "alert-def456"}
-
-# Create burn rate alert
-resource_type="alert"
-operation="create"
-params={
-    "payload": {
-        "name": "High Burn Rate Alert",
-        "description": "Alert when error budget burns too fast",
-        "sloIds": ["slo-abc123"],
-        "rule": {
-            "alertType": "ERROR_BUDGET",
-            "metric": "BURN_RATE"
-        },
-        "severity": 10,
-        "alertChannelIds": ["channel-123"],
-        "timeThreshold": {
-            "expiry": 604800000,
-            "timeWindow": 604800000
-        },
-        "customPayloadFields": [
-            {
-                "type": "staticString",
-                "key": "environment",
-                "value": "production"
-            }
-        ],
-        "threshold": {
-            "type": "staticThreshold",
-            "operator": ">=",
-            "value": 2.0
-        },
-        "burnRateTimeWindows": {
-            "longTimeWindow": {
-                "duration": 1,
-                "durationType": "hour"
-            },
-            "shortTimeWindow": {
-                "duration": 5,
-                "durationType": "minute"
-            }
-        }
-    }
-}
-
-# Disable alert
-resource_type="alert"
-operation="disable"
-params={"id": "alert-def456"}
-
-# Enable alert
-resource_type="alert"
-operation="enable"
-params={"id": "alert-def456"}
-```
-
-#### Correction Windows
-
-```python
-# List all correction windows
-resource_type="correction"
-operation="get_all"
-params={"page_size": 20, "query": "maintenance"}
-
-# Get correction window by ID
-resource_type="correction"
-operation="get_by_id"
-params={"id": "correction-xyz"}
-
-# Create maintenance window with timezone
-resource_type="correction"
-operation="create"
-params={
-    "payload": {
-        "name": "Planned Maintenance",
-        "scheduling": {
-            "duration": 2,
-            "durationUnit": "hour",
-            "startTime": "12 March 2026, 1:00 AM|IST"
-        },
-        "sloIds": ["slo-abc123"],
-        "description": "Database upgrade maintenance",
-        "tags": ["maintenance", "database"],
-        "active": True
-    }
-}
-
-# Create recurring correction window
-resource_type="correction"
-operation="create"
-params={
-    "payload": {
-        "name": "Weekly Maintenance",
-        "scheduling": {
-            "duration": 1,
-            "durationUnit": "hour",
-            "startTime": "15 March 2026, 2:00 AM|UTC",
-            "recurrent": True,
-            "recurrentRule": "FREQ=WEEKLY;BYDAY=SU"
-        },
-        "sloIds": ["slo-abc123", "slo-def456"],
-        "description": "Weekly system maintenance",
-        "active": True
-    }
-}
-
-# Update correction window
-resource_type="correction"
-operation="update"
-params={
-    "id": "correction-xyz",
-    "payload": {
-        # Complete correction configuration with updated fields
-    }
-}
-
-# Delete correction window
-resource_type="correction"
-operation="delete"
-params={"id": "correction-xyz"}
-```
-
-### Timezone Handling
-
-The SLO smart router includes intelligent timezone handling to prevent time-related errors:
-
-#### Supported Formats
-- **With Timezone**: `"10 March 2026, 2:00 PM|IST"`
-- **ISO 8601**: `"2026-03-10T14:00:00|America/New_York"`
-- **Unix Timestamp**: `1741604400000` (milliseconds)
-
-#### Automatic Elicitation
-If a datetime is provided without a timezone, the router will:
-1. Detect the missing timezone
-2. Return an elicitation response requesting timezone information
-3. Provide common timezone examples (IST, UTC, America/New_York, etc.)
-4. Wait for user to specify the timezone before proceeding
-
-#### Example Elicitation Flow
-```python
-# User provides datetime without timezone
-params = {
-    "slo_id": "slo-abc123",
-    "var_from": "10 March 2026, 2:00 PM"  # Missing timezone
-}
-
-# Router responds with elicitation
-{
-    "elicitation_needed": True,
-    "message": "I need to know which timezone for '10 March 2026, 2:00 PM'...",
-    "missing_parameters": ["timezone"],
-    "user_prompt": "What timezone should be used for the start time?"
-}
-
-# User provides timezone, router converts and proceeds
-params = {
-    "slo_id": "slo-abc123",
-    "var_from": "10 March 2026, 2:00 PM|IST"  # With timezone
-}
-```
-
-### Best Practices
-
-1. **Always Include Timezone**: When using datetime strings, always specify the timezone to avoid ambiguity
-2. **Use Complete Payloads for Updates**: Update operations require the complete configuration, not just changed fields
-3. **Fetch Before Update**: Always fetch the current configuration before updating to ensure you have all required fields
-4. **Use IDs for Operations**: Use SLO IDs (not names) for get, update, and delete operations
-5. **Validate Required Fields**: The router will elicit missing required fields, but providing them upfront is more efficient
-6. **Page Size Management**: Use appropriate page sizes for list operations to balance performance and completeness
-
-### Error Handling
-
-The router provides detailed error messages for common issues:
-
-- **Invalid Resource Type**: Lists valid resource types and suggests corrections
-- **Invalid Operation**: Shows valid operations for the specified resource type
-- **Missing Parameters**: Identifies missing required parameters with helpful messages
-- **Timezone Issues**: Elicits timezone information when datetime strings lack timezone context
-- **API Errors**: Passes through detailed error messages from the Instana API
-
-### Integration with Tool Filtering
-
-Enable the SLO smart router using the `slo` category:
-
-```bash
-# Enable only SLO tools
-mcp-instana --tools slo --transport streamable-http
-
-# Enable SLO with other categories
-mcp-instana --tools slo,app,events --transport streamable-http
-```
 
 ## Example Prompts
 

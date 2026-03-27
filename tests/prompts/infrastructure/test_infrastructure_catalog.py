@@ -13,19 +13,39 @@ class TestInfrastructureCatalogPrompts(unittest.TestCase):
 
     def test_get_available_payload_keys_by_plugin_id_registered(self):
         """Test that get_available_payload_keys_by_plugin_id is registered in the prompt registry."""
-        self.assertIn(InfrastructureCatalogPrompts.get_available_payload_keys_by_plugin_id, PROMPT_REGISTRY)
+        # The registry contains staticmethod objects, so we need to unwrap them
+        func = InfrastructureCatalogPrompts.get_available_payload_keys_by_plugin_id
+        self.assertTrue(any(
+            getattr(item, '__func__', item) == func
+            for item in PROMPT_REGISTRY
+        ))
 
     def test_get_infrastructure_catalog_metrics_registered(self):
         """Test that get_infrastructure_catalog_metrics is registered in the prompt registry."""
-        self.assertIn(InfrastructureCatalogPrompts.get_infrastructure_catalog_metrics, PROMPT_REGISTRY)
+        # The registry contains staticmethod objects, so we need to unwrap them
+        func = InfrastructureCatalogPrompts.get_infrastructure_catalog_metrics
+        self.assertTrue(any(
+            getattr(item, '__func__', item) == func
+            for item in PROMPT_REGISTRY
+        ))
 
     def test_get_tag_catalog_registered(self):
         """Test that get_tag_catalog is registered in the prompt registry."""
-        self.assertIn(InfrastructureCatalogPrompts.get_tag_catalog, PROMPT_REGISTRY)
+        # The registry contains staticmethod objects, so we need to unwrap them
+        func = InfrastructureCatalogPrompts.get_tag_catalog
+        self.assertTrue(any(
+            getattr(item, '__func__', item) == func
+            for item in PROMPT_REGISTRY
+        ))
 
     def test_get_tag_catalog_all_registered(self):
         """Test that get_tag_catalog_all is registered in the prompt registry."""
-        self.assertIn(InfrastructureCatalogPrompts.get_tag_catalog_all, PROMPT_REGISTRY)
+        # The registry contains staticmethod objects, so we need to unwrap them
+        func = InfrastructureCatalogPrompts.get_tag_catalog_all
+        self.assertTrue(any(
+            getattr(item, '__func__', item) == func
+            for item in PROMPT_REGISTRY
+        ))
 
     def test_get_prompts_returns_all_prompts(self):
         """Test that get_prompts returns all prompts defined in the class."""

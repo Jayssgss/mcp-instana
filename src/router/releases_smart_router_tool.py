@@ -1,0 +1,364 @@
+"""
+Smart Router Tool for Releases Management
+
+This module provides a unified MCP tool that routes release management queries
+to the appropriate specialized tools.
+"""
+
+import logging
+from typing import Any, Dict, List, Optional
+
+from mcp.types import ToolAnnotations
+
+from src.core.timestamp_utils import convert_to_timestamp
+from src.core.utils import BaseInstanaClient, register_as_tool
+
+logger = logging.getLogger(__name__)
+
+# Constants for valid operations
+OPERATION_GET_ALL_RELEASES = "get_all_releases"
+OPERATION_GET_RELEASE = "get_release"
+OPERATION_CREATE_RELEASE = "create_release"
+OPERATION_UPDATE_RELEASE = "update_release"
+OPERATION_DELETE_RELEASE = "delete_release"
+
+RELEASES_VALID_OPERATIONS = [
+    OPERATION_GET_ALL_RELEASES,
+    OPERATION_GET_RELEASE,
+    OPERATION_CREATE_RELEASE,
+    OPERATION_UPDATE_RELEASE,
+    OPERATION_DELETE_RELEASE
+]
+
+
+class ReleasesSmartRouterMCPTool(BaseInstanaClient):
+    """
+    Smart router for releases management operations.
+    Routes queries to Releases tools.
+    """
+
+    def __init__(self, read_token: str, base_url: str):
+        """Initialize the Smart Router Releases MCP tool."""
+        super().__init__(read_token=read_token, base_url=base_url)
+
+        # Lazy import to avoid circular dependencies
+        from src.releases.releases_tools import ReleasesMCPTools
+
+        # Initialize the releases client
+        self.releases_client = ReleasesMCPTools(read_token, base_url)
+
+        logger.info("Smart Router Releases initialized")
+
+    @register_as_tool(
+        title="Manage Instana Releases",
+        annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False)
+    )
+    async def manage_releases(
+        self,
+        operation: str,
+        params: Optional[Dict[str, Any]] = None,
+        ctx=None
+    ) -> Dict[str, Any]:
+        """
+        Unified releases manager for tracking deployments and analyzing release impact.
+
+        Operations: get_all_releases, get_release, create_release, update_release, delete_release
+
+        GET_ALL_RELEASES - List releases in time range with pagination and filtering
+            params: from_time, to_time, name_filter, page_number, page_size
+            Time params support: milliseconds (1742369820000) OR "datetime|timezone" ("19 March 2026, 2:47 PM|IST")
+            name_filter: Filter releases by name (case-insensitive substring match)
+            page_number: Page number (1-based, use with page_size)
+            page_size: Results per page (default: 50)
+
+        GET_RELEASE - Get release by ID
+            params: release_id (required)
+            Returns: id, name, start, applications, services, scopes
+            Use release.start with manage_applications/manage_events to analyze post-release performance/incidents
+
+        CREATE_RELEASE - Create new release
+            params: name (required), start (required), applications, services
+            name: Release identifier (e.g., "frontend/release-2000")
+            start: Deployment timestamp - milliseconds OR "datetime|timezone"
+            applications: [{"name": "app_name"}]
+            services: [{"name": "service_name", "scopedTo": {...}}]
+
+        UPDATE_RELEASE - Update existing release
+            params: release_id (required), name (required), start (required), applications, services
+            Same format as create_release
+
+        DELETE_RELEASE - Delete release
+            params: release_id (required)
+
+        Examples:
+            # List all
+            operation="get_all_releases"
+
+            # List with time range
+            operation="get_all_releases", params={"from_time": "19 March 2026, 2:00 PM|IST", "to_time": "19 March 2026, 5:00 PM|IST"}
+
+            # List with name filter
+            operation="get_all_releases", params={"name_filter": "frontend"}
+
+            # List with pagination
+            operation="get_all_releases", params={"page_number": 1, "page_size": 50}
+
+            # List with all filters
+            operation="get_all_releases", params={"from_time": "19 March 2026, 2:00 PM|IST", "to_time": "19 March 2026, 5:00 PM|IST", "name_filter": "release", "page_number": 1, "page_size": 20}
+
+            # Get by ID
+            operation="get_release", params={"release_id": "l1wgr3DsQkGLf8u18JiGsg"}
+
+            # Create
+            operation="create_release", params={"name": "frontend/release-2000", "start": "19 March 2026, 2:47 PM|IST", "applications": [{"name": "My App"}]}
+
+            # Update
+            operation="update_release", params={"release_id": "l1wgr3DsQkGLf8u18JiGsg", "name": "frontend/release-2001", "start": 1742349976000}
+
+            # Delete
+            operation="delete_release", params={"release_id": "l1wgr3DsQkGLf8u18JiGsg"}
+        """
+        try:
+            logger.debug(f"[manage_releases] Received operation: {operation}")
+
+            # Initialize params if not provided
+            if params is None:
+                params = {}
+
+            # Validate operation
+            if operation not in RELEASES_VALID_OPERATIONS:
+                logger.warning(f"[manage_releases] Invalid operation: {operation}")
+                return {
+                    "error": f"Invalid operation '{operation}'",
+                    "valid_operations": RELEASES_VALID_OPERATIONS
+                }
+
+            # Route to the appropriate operation
+            logger.debug(f"[manage_releases] Routing to Releases client for operation: {operation}")
+
+            if operation == OPERATION_GET_ALL_RELEASES:
+                from_time = params.get("from_time")
+                to_time = params.get("to_time")
+                name_filter = params.get("name_filter")
+                page_number = params.get("page_number")
+                page_size = params.get("page_size")
+
+                # Handle datetime string conversion for from_time
+                if from_time is not None and isinstance(from_time, str):
+                    logger.debug(f"[manage_releases] Converting from_time datetime string: {from_time}")
+                    # Check if timezone is provided in format "datetime|timezone"
+                    if "|" not in from_time:
+                        return {
+                            "elicitation_needed": True,
+                            "message": f"I see you want to filter releases from '{from_time}', but I need to know which timezone.\n\nPlease specify the timezone:\n- IST (India Standard Time)\n- America/New_York (Eastern Time)\n- UTC (Coordinated Universal Time)\n- Europe/London (GMT/BST)\n- Asia/Tokyo (Japan Standard Time)\n\nOr any other IANA timezone name.",
+                            "missing_parameters": ["timezone"],
+                            "user_prompt": f"What timezone should be used for the start time '{from_time}'?"
+                        }
+
+                    # Extract timezone if provided
+                    datetime_str, timezone = from_time.split("|", 1)
+                    conversion_result = convert_to_timestamp(datetime_str.strip(), timezone.strip(), "milliseconds")
+
+                    if "error" in conversion_result:
+                        return {
+                            "error": f"Failed to convert from_time datetime: {conversion_result['error']}",
+                            "operation": operation
+                        }
+
+                    from_time = conversion_result["timestamp"]
+                    logger.info(f"[manage_releases] Converted from_time to timestamp: {from_time}")
+
+                # Handle datetime string conversion for to_time
+                if to_time is not None and isinstance(to_time, str):
+                    logger.debug(f"[manage_releases] Converting to_time datetime string: {to_time}")
+                    # Check if timezone is provided
+                    if "|" not in to_time:
+                        return {
+                            "elicitation_needed": True,
+                            "message": f"I see you want to filter releases until '{to_time}', but I need to know which timezone.\n\nPlease specify the timezone:\n- IST (India Standard Time)\n- America/New_York (Eastern Time)\n- UTC (Coordinated Universal Time)\n- Europe/London (GMT/BST)\n- Asia/Tokyo (Japan Standard Time)\n\nOr any other IANA timezone name.",
+                            "missing_parameters": ["timezone"],
+                            "user_prompt": f"What timezone should be used for the end time '{to_time}'?"
+                        }
+
+                    # Extract timezone if provided
+                    datetime_str, timezone = to_time.split("|", 1)
+                    conversion_result = convert_to_timestamp(datetime_str.strip(), timezone.strip(), "milliseconds")
+
+                    if "error" in conversion_result:
+                        return {
+                            "error": f"Failed to convert to_time datetime: {conversion_result['error']}",
+                            "operation": operation
+                        }
+
+                    to_time = conversion_result["timestamp"]
+                    logger.info(f"[manage_releases] Converted to_time to timestamp: {to_time}")
+
+                result = await self.releases_client.get_all_releases(
+                    from_time=from_time,
+                    to_time=to_time,
+                    name_filter=name_filter,
+                    page_number=page_number,
+                    page_size=page_size,
+                    ctx=ctx
+                )
+
+            elif operation == OPERATION_GET_RELEASE:
+                release_id = params.get("release_id")
+
+                if not release_id:
+                    return {
+                        "operation": operation,
+                        "error": "Missing required parameter: release_id"
+                    }
+
+                result = await self.releases_client.get_release(
+                    release_id=release_id,
+                    ctx=ctx
+                )
+
+            elif operation == OPERATION_CREATE_RELEASE:
+                name = params.get("name")
+                start = params.get("start")
+                applications = params.get("applications")
+                services = params.get("services")
+
+                if not name:
+                    return {
+                        "operation": operation,
+                        "error": "Missing required parameter: name"
+                    }
+
+                if not start:
+                    return {
+                        "operation": operation,
+                        "error": "Missing required parameter: start"
+                    }
+
+                # Handle datetime string conversion for start time
+                if isinstance(start, str):
+                    logger.debug(f"[manage_releases] Converting start datetime string: {start}")
+                    # Check if timezone is provided
+                    if "|" not in start:
+                        return {
+                            "elicitation_needed": True,
+                            "message": f"I see you want to create a release starting at '{start}', but I need to know which timezone.\n\nPlease specify the timezone:\n- IST (India Standard Time)\n- America/New_York (Eastern Time)\n- UTC (Coordinated Universal Time)\n- Europe/London (GMT/BST)\n- Asia/Tokyo (Japan Standard Time)\n\nOr any other IANA timezone name.",
+                            "missing_parameters": ["timezone"],
+                            "user_prompt": f"What timezone should be used for the start time '{start}'?"
+                        }
+
+                    # Extract timezone if provided
+                    datetime_str, timezone = start.split("|", 1)
+                    conversion_result = convert_to_timestamp(datetime_str.strip(), timezone.strip(), "milliseconds")
+
+                    if "error" in conversion_result:
+                        return {
+                            "error": f"Failed to convert start datetime: {conversion_result['error']}",
+                            "operation": operation
+                        }
+
+                    start = conversion_result["timestamp"]
+                    logger.info(f"[manage_releases] Converted start to timestamp: {start}")
+
+                result = await self.releases_client.create_release(
+                    name=name,
+                    start=start,
+                    applications=applications,
+                    services=services,
+                    ctx=ctx
+                )
+
+            elif operation == OPERATION_UPDATE_RELEASE:
+                release_id = params.get("release_id")
+                name = params.get("name")
+                start = params.get("start")
+                applications = params.get("applications")
+                services = params.get("services")
+
+                if not release_id:
+                    return {
+                        "operation": operation,
+                        "error": "Missing required parameter: release_id"
+                    }
+
+                if not name:
+                    return {
+                        "operation": operation,
+                        "error": "Missing required parameter: name"
+                    }
+
+                if not start:
+                    return {
+                        "operation": operation,
+                        "error": "Missing required parameter: start"
+                    }
+
+                # Handle datetime string conversion for start time
+                if isinstance(start, str):
+                    logger.debug(f"[manage_releases] Converting start datetime string: {start}")
+                    # Check if timezone is provided
+                    if "|" not in start:
+                        return {
+                            "elicitation_needed": True,
+                            "message": f"I see you want to update the release start time to '{start}', but I need to know which timezone.\n\nPlease specify the timezone:\n- IST (India Standard Time)\n- America/New_York (Eastern Time)\n- UTC (Coordinated Universal Time)\n- Europe/London (GMT/BST)\n- Asia/Tokyo (Japan Standard Time)\n\nOr any other IANA timezone name.",
+                            "missing_parameters": ["timezone"],
+                            "user_prompt": f"What timezone should be used for the start time '{start}'?"
+                        }
+
+                    # Extract timezone if provided
+                    datetime_str, timezone = start.split("|", 1)
+                    conversion_result = convert_to_timestamp(datetime_str.strip(), timezone.strip(), "milliseconds")
+
+                    if "error" in conversion_result:
+                        return {
+                            "error": f"Failed to convert start datetime: {conversion_result['error']}",
+                            "operation": operation
+                        }
+
+                    start = conversion_result["timestamp"]
+                    logger.info(f"[manage_releases] Converted start to timestamp: {start}")
+
+                result = await self.releases_client.update_release(
+                    release_id=release_id,
+                    name=name,
+                    start=start,
+                    applications=applications,
+                    services=services,
+                    ctx=ctx
+                )
+
+            elif operation == OPERATION_DELETE_RELEASE:
+                release_id = params.get("release_id")
+
+                if not release_id:
+                    return {
+                        "operation": operation,
+                        "error": "Missing required parameter: release_id"
+                    }
+
+                result = await self.releases_client.delete_release(
+                    release_id=release_id,
+                    ctx=ctx
+                )
+
+            else:
+                return {
+                    "error": f"Unsupported operation: {operation}",
+                    "valid_operations": RELEASES_VALID_OPERATIONS
+                }
+
+            logger.debug(f"[manage_releases] Successfully completed operation: {operation}")
+            return {
+                "operation": operation,
+                "results": result
+            }
+
+        except Exception as e:
+            logger.error(
+                f"[manage_releases] Error processing operation: {operation}, "
+                f"error: {e!s}",
+                exc_info=True
+            )
+            return {
+                "error": f"Releases smart router error: {e!s}",
+                "operation": operation
+            }

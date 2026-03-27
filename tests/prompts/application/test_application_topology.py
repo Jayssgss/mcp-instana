@@ -11,7 +11,12 @@ class TestApplicationTopologyPrompts(unittest.TestCase):
 
     def test_get_application_topology_registered(self):
         """Test that get_application_topology is registered in the prompt registry."""
-        self.assertIn(ApplicationTopologyPrompts.get_application_topology, PROMPT_REGISTRY)
+        # The registry contains staticmethod objects, so we need to unwrap them
+        func = ApplicationTopologyPrompts.get_application_topology
+        self.assertTrue(any(
+            getattr(item, '__func__', item) == func
+            for item in PROMPT_REGISTRY
+        ))
 
     def test_get_prompts_returns_all_prompts(self):
         """Test that get_prompts returns all prompts defined in the class."""

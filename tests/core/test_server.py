@@ -155,7 +155,7 @@ class TestMCPServer(unittest.TestCase):
         mock_create_clients.return_value = mock_state
         token = "test_token"
         base_url = "https://test.instana.io"
-        result, tools_registered = create_app(token, base_url)
+        result, tools_registered, port = create_app(token, base_url)
         mock_fast_mcp.assert_called_once()
         self.assertEqual(result, mock_server)
         mock_create_clients.assert_called_with(token, base_url, "all")
@@ -170,7 +170,7 @@ class TestMCPServer(unittest.TestCase):
         token = "test_token"
         base_url = "https://test.instana.io"
         # The implementation returns a fallback server instead of raising an exception
-        result, tools_registered = create_app(token, base_url)
+        result, tools_registered, port = create_app(token, base_url)
         self.assertEqual(result, mock_fallback_server)
         self.assertEqual(tools_registered, 0)
         # Verify that logger.error was called but don't actually log anything
@@ -236,7 +236,7 @@ class TestMCPServer(unittest.TestCase):
     @patch('src.core.server.sys.argv', ['mcp_server.py'])
     def test_main_function_basic(self, mock_create_app, mock_arg_parser):
         mock_app = MagicMock()
-        mock_create_app.return_value = (mock_app, 1)
+        mock_create_app.return_value = (mock_app, 1, 0)
         mock_parser = MagicMock()
         mock_arg_parser.return_value = mock_parser
         mock_args = MagicMock()
@@ -268,7 +268,7 @@ class TestMCPServer(unittest.TestCase):
 
         # Set up the mock app
         mock_app = MagicMock()
-        mock_create_app.return_value = (mock_app, 1)
+        mock_create_app.return_value = (mock_app, 1, 0)
 
         # Set up the argument parser
         mock_parser = MagicMock()
@@ -303,7 +303,7 @@ class TestMCPServer(unittest.TestCase):
         mock_args.list_tools = False
         mock_parser.parse_args.return_value = mock_args
         mock_app = MagicMock()
-        mock_create_app.return_value = (mock_app, 0)
+        mock_create_app.return_value = (mock_app, 0, 0)
 
         # Just check that sys.exit is called with the correct code
         mock_exit.reset_mock()
@@ -315,7 +315,7 @@ class TestMCPServer(unittest.TestCase):
     @patch('src.core.server.sys.argv', ['mcp_server.py', '--transport', 'streamable-http'])
     def test_main_function_http(self, mock_create_app, mock_arg_parser):
         mock_app = MagicMock()
-        mock_create_app.return_value = (mock_app, 1)
+        mock_create_app.return_value = (mock_app, 1, 0)
         mock_parser = MagicMock()
         mock_arg_parser.return_value = mock_parser
         mock_args = MagicMock()
@@ -328,14 +328,14 @@ class TestMCPServer(unittest.TestCase):
         mock_parser.parse_args.return_value = mock_args
         with patch('src.core.server.sys.exit'):
             main()
-        mock_app.run.assert_called_once_with(transport="streamable-http")
+        mock_app.run.assert_called_once_with(transport="streamable-http", host='0.0.0.0', port=0)
 
     @patch('src.core.server.argparse.ArgumentParser')
     @patch('src.core.server.create_app')
     def test_main_function_keyboard_interrupt(self, mock_create_app, mock_arg_parser):
         mock_app = MagicMock()
         mock_app.run.side_effect = KeyboardInterrupt()
-        mock_create_app.return_value = (mock_app, 1)
+        mock_create_app.return_value = (mock_app, 1, 0)
         mock_parser = MagicMock()
         mock_arg_parser.return_value = mock_parser
         mock_args = MagicMock()
@@ -625,7 +625,7 @@ class TestMCPServerAsync(unittest.TestCase):
         """Test debug output for HTTP server"""
         # Set up mocks
         mock_app = MagicMock()
-        mock_create_app.return_value = (mock_app, 5)  # 5 tools registered
+        mock_create_app.return_value = (mock_app, 5, 0)  # 5 tools registered
 
         mock_parser = MagicMock()
         mock_arg_parser.return_value = mock_parser
@@ -655,7 +655,7 @@ class TestMCPServerAsync(unittest.TestCase):
         # Set up mocks
         mock_app = MagicMock()
         mock_app.run.side_effect = Exception("HTTP server error")
-        mock_create_app.return_value = (mock_app, 1)
+        mock_create_app.return_value = (mock_app, 1, 0)
 
         mock_parser = MagicMock()
         mock_arg_parser.return_value = mock_parser
@@ -685,7 +685,7 @@ class TestMCPServerAsync(unittest.TestCase):
         # Set up mocks
         mock_app = MagicMock()
         mock_app.run.side_effect = AttributeError("'_io.StringIO' object has no attribute 'buffer'")
-        mock_create_app.return_value = (mock_app, 1)
+        mock_create_app.return_value = (mock_app, 1, 0)
 
         mock_parser = MagicMock()
         mock_arg_parser.return_value = mock_parser
@@ -755,7 +755,7 @@ class TestMCPServerAsync(unittest.TestCase):
         """Test that --tools app enables only app tools and prompts"""
         # Set up mocks
         mock_app = MagicMock()
-        mock_create_app.return_value = (mock_app, 1)
+        mock_create_app.return_value = (mock_app, 1, 0)
 
         mock_parser = MagicMock()
         mock_arg_parser.return_value = mock_parser
@@ -785,7 +785,7 @@ class TestMCPServerAsync(unittest.TestCase):
         """Test that --tools infra enables only infra tools and prompts"""
         # Set up mocks
         mock_app = MagicMock()
-        mock_create_app.return_value = (mock_app, 1)
+        mock_create_app.return_value = (mock_app, 1, 0)
 
         mock_parser = MagicMock()
         mock_arg_parser.return_value = mock_parser
@@ -815,7 +815,7 @@ class TestMCPServerAsync(unittest.TestCase):
         """Test that --tools app,infra enables both app and infra tools and prompts"""
         # Set up mocks
         mock_app = MagicMock()
-        mock_create_app.return_value = (mock_app, 1)
+        mock_create_app.return_value = (mock_app, 1, 0)
 
         mock_parser = MagicMock()
         mock_arg_parser.return_value = mock_parser
@@ -850,7 +850,7 @@ class TestMCPServerAsync(unittest.TestCase):
         """Test debug output for enabled tools"""
         # Set up mocks
         mock_app = MagicMock()
-        mock_create_app.return_value = (mock_app, 1)
+        mock_create_app.return_value = (mock_app, 1, 0)
 
         # Mock the client categories
         mock_get_categories.return_value = {

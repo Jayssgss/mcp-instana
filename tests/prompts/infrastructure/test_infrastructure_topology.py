@@ -13,11 +13,21 @@ class TestInfrastructureTopologyPrompts(unittest.TestCase):
 
     def test_get_related_hosts_registered(self):
         """Test that get_related_hosts is registered in the prompt registry."""
-        self.assertIn(InfrastructureTopologyPrompts.get_related_hosts, PROMPT_REGISTRY)
+        # The registry contains staticmethod objects, so we need to unwrap them
+        func = InfrastructureTopologyPrompts.get_related_hosts
+        self.assertTrue(any(
+            getattr(item, '__func__', item) == func
+            for item in PROMPT_REGISTRY
+        ))
 
     def test_get_topology_registered(self):
         """Test that get_topology is registered in the prompt registry."""
-        self.assertIn(InfrastructureTopologyPrompts.get_topology, PROMPT_REGISTRY)
+        # The registry contains staticmethod objects, so we need to unwrap them
+        func = InfrastructureTopologyPrompts.get_topology
+        self.assertTrue(any(
+            getattr(item, '__func__', item) == func
+            for item in PROMPT_REGISTRY
+        ))
 
     def test_get_prompts_returns_all_prompts(self):
         """Test that get_prompts returns all prompts defined in the class."""
