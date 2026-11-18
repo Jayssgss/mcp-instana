@@ -108,6 +108,7 @@ _CATEGORY_TO_TOOLS: dict[str, frozenset[str]] = {
     "synthetic":         frozenset({"manage_synthetics"}),
     "releases":          frozenset({"manage_releases"}),
     "maintenance_windows": frozenset({"manage_maintenance_windows"}),
+    "skills":            frozenset({"load_instana_skills"}),
 }
 
 
@@ -270,6 +271,7 @@ class MCPState:
     smart_router_synthetic_client: Any = None
     smart_router_releases_client: Any = None
     smart_router_maintenance_window_client: Any = None
+    smart_router_skills_client: Any = None
 
     # Infrastructure - Only the new two-pass elicitation tool
     smart_router_infrastructure_client: Any = None
@@ -458,6 +460,7 @@ def get_client_categories():
         from src.router.slo_smart_router_tool import SLOSmartRouterMCPTool
         from src.router.synthetic_smart_router_tool import SyntheticSmartRouterMCPTool
         from src.router.website_smart_router import WebsiteSmartRouterMCPTool
+        from src.skills.skills_tool import SkillsMCPTool
     except ImportError as e:
         logger.warning(f"Could not import client classes: {e}")
         return {}
@@ -489,6 +492,9 @@ def get_client_categories():
         ],
         "releases": [
             ('smart_router_releases_client', ReleasesSmartRouterMCPTool),
+        ],
+        "skills": [
+            ('smart_router_skills_client', SkillsMCPTool),
         ],
         "slo": [
             ('smart_router_slo_client', SLOSmartRouterMCPTool),
@@ -812,7 +818,7 @@ def main():
         else:
             set_log_level(args.log_level)
 
-        all_categories = {"app", "automation", "custom_dashboards", "events", "infra", "maintenance_windows", "mobile_app", "releases", "slo", "synthetic", "website"}
+        all_categories = {"app", "automation", "custom_dashboards", "events", "infra", "maintenance_windows", "mobile_app", "releases", "skills", "slo", "synthetic", "website"}
 
         # Handle --list-tools option
         if args.list_tools:
