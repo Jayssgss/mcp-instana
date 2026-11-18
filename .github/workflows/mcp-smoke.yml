@@ -1,0 +1,42 @@
+name: MCP smoke
+
+# Proves a CI job can start the Instana MCP server and read data from it.
+# Manual trigger only. Locally: act workflow_dispatch -W .github/workflows/mcp-smoke.yml -s INSTANA_API_TOKEN -s INSTANA_BASE_URL
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4   # under act this step copies the local project into the container
+
+      - uses: astral-sh/setup-uv@v5   # uv also fetches the Python version required by pyproject.toml
+
+      - name: Require secrets
+        env:
+          INSTANA_API_TOKEN: ${{ secrets.INSTANA_API_TOKEN }}
+          INSTANA_BASE_URL: ${{ secrets.INSTANA_BASE_URL }}
+        run: |
+          missing=""
+          [ -n "$INSTANA_API_TOKEN" ] || missing="$missing INSTANA_API_TOKEN"
+          [ -n "$INSTANA_BASE_URL" ] || missing="$missing INSTANA_BASE_URL"
+          if [ -n "$missing" ]; then
+            echo "::error::missing secrets:$missing"
+            exit 1
+          fi
+
+      - name: Start server and run smoke test
+        env:
+          INSTANA_API_TOKEN: ${{ secrets.INSTANA_API_TOKEN }}
+          INSTANA_BASE_URL: ${{ secrets.INSTANA_BASE_URL }}
+          SMOKE_READY_TIMEOUT: "120"
+          # Keep uv out of the checkout's .venv: under act that folder is a copy of the macOS one.
+          UV_PROJECT_ENVIRONMENT: ${{ runner.temp }}/smoke-venv
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: ./.github/actions/observe-deployment/run_local_smoke.sh
