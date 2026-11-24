@@ -1,0 +1,57 @@
+name: Bob agent test
+
+# Proves Bob Shell can be installed on a runner and run the change-timeline skill against our MCP server
+# (constant demo query on the demous tenant, about 1 Bobcoin per run).
+# Manual trigger only. Locally:
+#   act workflow_dispatch -W .github/workflows/bob-agent-test.yml -s INSTANA_API_TOKEN -s INSTANA_BASE_URL -s BOB_API_KEY
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bob:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4   # under act this step copies the local project into the container
+
+      - uses: astral-sh/setup-uv@v5
+
+      - name: Require secrets
+        env:
+          INSTANA_API_TOKEN: ${{ secrets.INSTANA_API_TOKEN }}
+          INSTANA_BASE_URL: ${{ secrets.INSTANA_BASE_URL }}
+          BOB_API_KEY: ${{ secrets.BOB_API_KEY }}
+        run: |
+          missing=""
+          [ -n "$INSTANA_API_TOKEN" ] || missing="$missing INSTANA_API_TOKEN"
+          [ -n "$INSTANA_BASE_URL" ] || missing="$missing INSTANA_BASE_URL"
+          [ -n "$BOB_API_KEY" ] || missing="$missing BOB_API_KEY"
+          if [ -n "$missing" ]; then
+            echo "::error::missing secrets:$missing"
+            exit 1
+          fi
+
+      - name: Install Bob Shell (npm)
+        run: |
+          start=$(date +%s)
+          node --version
+          npm --version
+          # Install into a folder we own so no sudo is needed on a real runner.
+          npm install --registry=https://registry.npmjs.org/ --allow-scripts=@officecli/officecli \
+            --prefix "$RUNNER_TEMP/bob-npm" -g @ibm/bob
+          echo "$RUNNER_TEMP/bob-npm/bin" >> "$GITHUB_PATH"
+          echo "Bob install took $(( $(date +%s) - start ))s"
+
+      - name: Run one Bob task against our MCP server
+        env:
+          INSTANA_API_TOKEN: ${{ secrets.INSTANA_API_TOKEN }}
+          INSTANA_BASE_URL: ${{ secrets.INSTANA_BASE_URL }}
+          BOB_API_KEY: ${{ secrets.BOB_API_KEY }}
+          # Keep uv out of the checkout's .venv: under act that folder is a copy of the macOS one.
+          UV_PROJECT_ENVIRONMENT: ${{ runner.temp }}/bob-venv
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: ./.github/actions/observe-deployment/run_local_bob.sh
